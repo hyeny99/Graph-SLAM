@@ -1,41 +1,30 @@
 #! /usr/bin/env python3
-import numpy as np
 
-
-err = 0.01
-
-class Node():
-    def __init__(self, pose):
-        self._pose = pose
-
+class Vertex():
+    verticies = []
+    def __init__(self, pose, scan_data):
+        self.pose = pose
+        self.scan_data = scan_data
+        #self.verticies.append(self)
+        
+        
 
 class Edge():
-    def __init__(self, node_1:Node, node_2:Node, scan):
-        self._nodei = node_1
-        self._nodej = node_2
-        self._scan = scan
-        
-    
-    def get_err_info(self, z_pred, z_actual):
-        self._err = z_actual - z_pred
-        cov_matrix = np.matrix([[err**2, 0, 0],
-                                [0, err**2, 0],
-                                [0, 0, err**2]])
-        self._info_matrix = cov_matrix.I
+    def __init__(self, v1, v2):
+        self.v1 = v1
+        self.v2 = v2
+
 
 class Graph():
+    verticies = []
     edges = []
-    nodes = []
-
     def __init__(self):
-        print("Graph created")
-    
-    def add_edge(self, edge:Edge):
-        Graph.edges.append(edge)
-    
-    def add_node(self, node:Node):
-        Graph.nodes.append(node)
-        
+        pass
 
-        
-    
+    def add_vertex(self, vertex):
+        self.verticies.append(vertex)
+
+    def add_edges(self, edge):
+        self.edges.append(edge)
+
+
