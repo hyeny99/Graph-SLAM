@@ -234,16 +234,11 @@ def initialize_particle(curr_pose):
     pose.position.y = curr_pose[1,0]
     pose.position.z = 0
 
-    # quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
-    # pose.orientation.x = quaternion[0]
-    # pose.orientation.y = quaternion[1]
-    # pose.orientation.z = quaternion[2]
-    # pose.orientation.w = quaternion[3]
-    pose.orientation.x = 0
-    pose.orientation.y = 0
-    pose.orientation.z = curr_pose[2,0]
-    pose.orientation.w = 1
-
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    pose.orientation.x = quaternion[0]
+    pose.orientation.y = quaternion[1]
+    pose.orientation.z = quaternion[2]
+    pose.orientation.w = quaternion[3]
     particles_msg.poses.append(pose)
 
     return particles_msg
@@ -259,11 +254,6 @@ def update_particle(particles_msg, curr_pose):
     pose.orientation.y = quaternion[1]
     pose.orientation.z = quaternion[2]
     pose.orientation.w = quaternion[3]
-
-    # pose.orientation.x = 0
-    # pose.orientation.y = 0
-    # pose.orientation.z = curr_pose[2,0]
-    # pose.orientation.w = 1
 
     particles_msg.poses.append(pose)
 
@@ -301,12 +291,11 @@ if __name__== "__main__":
     curr_pose[2, 0] = 0
 
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-    # print(scan_msg)
-    # noisy_scan_msg = Noisy_sensor(scan_msg)
-    # print(noisy_scan_msg.ranges)
-    # scan_data = noisy_scan_msg.x_y_data(curr_pose)
-    # v1 = Vertex(curr_pose, scan_msg)
-    # graph.add_vertex(v1)
+    noisy_scan_msg = Noisy_sensor(scan_msg)
+    scan_data = noisy_scan_msg.x_y_data(curr_pose)
+    v1 = Vertex(curr_pose, scan_data)
+    graph.add_vertex(v1)
+
 
     mark_point = np.empty((3,1))
     mark_point[0,0] = curr_pose[0,0]
@@ -336,11 +325,11 @@ if __name__== "__main__":
 
         # Measurements (laser)
         scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-        # noisy_scan_msg = Noisy_sensor(scan_msg)
+        noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        # non_op_map = deepcopy(map)
+        non_op_map = deepcopy(map)
 
-        map_msg = build_map(scan_msg, curr_pose, map)
+        map_msg = build_map(noisy_scan_msg, curr_pose, map)
         map_pub.publish(map_msg)
 
         dx_p = mark_point[0,0] - curr_pose[0,0]
@@ -351,20 +340,20 @@ if __name__== "__main__":
         if r > 0.5 or dyaw_p > 0.5:
             particles = update_particle(copy(particles), curr_pose)
             mark_point = deepcopy(curr_pose)
-            #scan_data = noisy_scan_msg.x_y_data(curr_pose)
+            scan_data = noisy_scan_msg.x_y_data(curr_pose)
 
-            # v2 = Vertex(curr_pose, scan_msg)
-            # edge = Edge(v1, v2)
-            # graph.add_vertex(v2)
-            # graph.add_edges(edge)
-            # ret = icp(v1, v2, [0,0,0], 13)
-            # dst = np.array([v2.scan_data.T], copy=True).astype(np.float32)
-            # dst = cv2.transform(dst, ret)
-            # x = dst[0].T[0]
-            # y = dst[0].T[1]
-            # icp_scan = np.array([x, y])
-            # v1 = deepcopy(v2)
-            # map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
+            v2 = Vertex(curr_pose, scan_data)
+            edge = Edge(v1, v2)
+            graph.add_vertex(v2)
+            graph.add_edges(edge)
+            ret = icp(v1, v2, [0,0,0], 13)
+            dst = np.array([v2.scan_data.T], copy=True).astype(np.float32)
+            dst = cv2.transform(dst, ret)
+            x = dst[0].T[0]
+            y = dst[0].T[1]
+            icp_scan = np.array([x, y])
+            v1 = deepcopy(v2)
+            map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
 
             
 
