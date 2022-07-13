@@ -28,6 +28,7 @@ def uniform_subsampling(scan_data):
     y = []
     for i in range(0, length, 2):
         x.append(scan_data[0][i])
+        print("x: " + str(scan_data[0][i]))
         y.append(scan_data[1][i])
 
     subsampling = np.array([x, y])
@@ -63,17 +64,20 @@ def is_converge(Tr, scale):
 
 
 def icp(a: Vertex, b: Vertex, init_pose, n_iteration):
-    print(a.scan_data)
+    #print(a.scan_data)
     data_a = np.array(uniform_subsampling(a.scan_data))
+    print(len(data_a))
     data_b = np.array(uniform_subsampling(b.scan_data))
 
     src = np.array([data_a.T], copy=True).astype(np.float32)
+    #print(len(src))
+    #print(src)
     dst = np.array([data_b.T], copy=True).astype(np.float32)
 
     #knn = NearestNeighbors(n_neighbors=1, algorithm='auto')
     knn = cv2.ml.KNearest_create()
     responses = np.array(range(len(data_b[0]))).astype(np.float32)
-    knn.train(src[0], responses)
+    knn.train((src[0]), responses)
 
     Tr = np.array([[np.cos(init_pose[0]), -np.sin(init_pose[1]), 0],
                    [np.sin(init_pose[0]), np.cos(init_pose[1]),  0],

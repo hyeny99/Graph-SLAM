@@ -21,8 +21,8 @@ toggle_noise = 1
 error = 0.01 # std_dev
 
 map_resolution = 0.01
-map_x = 10
-map_y = 10
+map_x = 30
+map_y = 30
 
 grid_dim_x = int(map_x / map_resolution)
 grid_dim_y = int(map_y / map_resolution)
@@ -121,10 +121,11 @@ def initialize_path_msg(curr_pose):
     pose.pose.position.z = 0
     
 
-    pose.pose.orientation.x = 0
-    pose.pose.orientation.y = 0
-    pose.pose.orientation.z = curr_pose[2,0]
-    pose.pose.orientation.w = 1
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    pose.pose.orientation.x = quaternion[0]
+    pose.pose.orientation.y = quaternion[1]
+    pose.pose.orientation.z = quaternion[2]
+    pose.pose.orientation.w = quaternion[3]
     path.poses.append(pose)
     
     return path
@@ -132,17 +133,18 @@ def initialize_path_msg(curr_pose):
 def update_path_msg(path, curr_pose):
 
     pose = PoseStamped()
-    yaw = curr_pose[2,0]
-    r = math.sqrt(dx**2 + dy**2)
+    #yaw = curr_pose[2,0]
+    #r = math.sqrt(dx**2 + dy**2)
     pose.pose.position.x = curr_pose[0,0]
     pose.pose.position.y = curr_pose[1,0] 
     pose.pose.position.z = 0
 
-    pose.pose.orientation.x = 0
-    pose.pose.orientation.y = 0
-    pose.pose.orientation.z = yaw
-    pose.pose.orientation.w = 1
-   
+    
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    pose.pose.orientation.x = quaternion[0]
+    pose.pose.orientation.y = quaternion[1]
+    pose.pose.orientation.z = quaternion[2]
+    pose.pose.orientation.w = quaternion[3]
     path.poses.append(pose)
 
     return path
@@ -170,20 +172,21 @@ def initialize_map_msg():
 
 
 def build_map(scan_msg, pose, map):
-    angle_max = scan_msg.angle_max
+    #angle_max = scan_msg.angle_max
     angle_min = scan_msg.angle_min
     angle_incre = scan_msg.angle_increment
 
     ranges = scan_msg.ranges
-    range_min = scan_msg.range_min
-    range_max = scan_msg.range_max
+    #range_min = scan_msg.range_min
+    #range_max = scan_msg.range_max
 
     theta = pose[2,0]
     x_pos_t = int(pose[0,0] / map_resolution)
     y_pos_t = int(pose[1,0] / map_resolution)
 
-    for i in range(len(ranges)):
+    for i in range((len(ranges))):
         angle = angle_min + i * angle_incre
+        #print(math.degrees(angle))
 
         # z = ranges[i]
         # if z == float('inf'):
@@ -286,8 +289,8 @@ if __name__== "__main__":
     prev_yaw = get_rotation(previous_position)
 
     curr_pose = np.empty((3, 1))
-    curr_pose[0, 0] = 5
-    curr_pose[1, 0] = 5
+    curr_pose[0, 0] = 15
+    curr_pose[1, 0] = 15
     curr_pose[2, 0] = 0
 
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
@@ -353,12 +356,12 @@ if __name__== "__main__":
             y = dst[0].T[1]
             icp_scan = np.array([x, y])
             v1 = deepcopy(v2)
-            map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
+            #map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
 
             
 
         path_msg = update_path_msg(copy(path), curr_pose)
-        map_pub.publish(map_msg)
+        #map_pub.publish(map_msg)
         path_pub.publish(path_msg)
        
         particle_pub.publish(particles)

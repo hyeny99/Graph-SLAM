@@ -5,7 +5,7 @@ import numpy as np
 
 angle_max_limit = -0.523599
 angle_min_limit = 0.523599
-range_max = 3.5
+range_max = 7.0
 
 
 class Noisy_sensor():
@@ -14,6 +14,8 @@ class Noisy_sensor():
         self.angle_min = angle_min_limit
         self.angle_max = angle_max_limit
         self.angle_increment = scan_msg.angle_increment
+        #print(self.angle_increment)
+
         self.range_min = scan_msg.range_min
         self.range_max = range_max
         self.ranges = add_error(scan_msg)
@@ -28,12 +30,16 @@ class Noisy_sensor():
 
         ranges = self.ranges
         angle_min = self.angle_min
-        print(angle_min)
+        #print(angle_min)
         angle_incre = self.angle_increment
-
         #print(ranges)
 
         for i in range(len(ranges)):
+            if ranges[i] == float('inf'):
+                data_x.append(0)
+                data_y.append(0)
+                continue
+            
             angle = angle_min + angle_incre * i
             t_yaw = yaw + angle
 
