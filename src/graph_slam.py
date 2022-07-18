@@ -11,7 +11,9 @@ import random
 from copy import copy, deepcopy
 from graph import Vertex, Edge, Graph
 from noisy_sensor import Noisy_sensor
-from scan_matching import *
+import noisy_odom
+#from scan_matching import *
+import icp
 
 # Config parameters
 dt = 0.01 # time between measurements
@@ -269,7 +271,7 @@ def optimize_map_msg(icp_scan, curr_pose, non_op_map):
         icp_y = icp_scan[1][i]
         icp_index = get_index(icp_x, icp_y)
 
-        non_op_map.data[icp_index] = 100
+        non_op_map.data[int(icp_index)] = 100
     
     return non_op_map
 
@@ -287,6 +289,7 @@ if __name__== "__main__":
     prev_x = previous_position.pose.pose.position.x
     prev_y = previous_position.pose.pose.position.y
     prev_yaw = get_rotation(previous_position)
+    prev_pose = [prev_x, prev_y, prev_yaw]
 
     curr_pose = np.empty((3, 1))
     curr_pose[0, 0] = 15
@@ -295,8 +298,8 @@ if __name__== "__main__":
 
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
     noisy_scan_msg = Noisy_sensor(scan_msg)
-    scan_data = noisy_scan_msg.x_y_data(curr_pose)
-    v1 = Vertex(curr_pose, scan_data)
+    #scan_data = noisy_scan_msg.x_y_data(curr_pose)
+    v1 = Vertex(curr_pose, noisy_scan_msg)
     graph.add_vertex(v1)
 
 
@@ -316,10 +319,18 @@ if __name__== "__main__":
 
     while not rospy.is_shutdown():
         # Measurements (odom) : getting noisy dx, dy and dyaw
-        dx,dy,dyaw   = get_noisy_odometry(prev_x, prev_y, prev_yaw)
-        prev_x       = prev_x + dx
-        prev_y       = prev_y + dy
-        prev_yaw     = prev_yaw + dyaw 
+        curr_odom =  rospy.wait_for_message("/odom", Odometry, timeout=None)
+        dx, dy, dyaw = noisy_odom.get_noisy_odom(prev_pose, curr_odom)
+   
+        curr_pose[0,0] = curr_pose[0,0] + dx
+        curr_pose[1,0] = curr_pose[1,0] + dy
+        curr_pose[2,0] = curr_pose[2,0] + dyaw
+        #print("curr_pose", curr_pose[0,0], curr_pose[1,0])
+
+        prev_x = curr_odom.pose.pose.position.x
+        prev_y = curr_odom.pose.pose.position.y
+        prev_yaw = get_rotation(curr_odom)
+        prev_pose = [prev_x, prev_y, prev_yaw]
 
         # update robot pose (belief)
         curr_pose[0,0] = curr_pose[0,0] + dx
@@ -343,20 +354,34 @@ if __name__== "__main__":
         if r > 0.5 or dyaw_p > 0.5:
             particles = update_particle(copy(particles), curr_pose)
             mark_point = deepcopy(curr_pose)
-            scan_data = noisy_scan_msg.x_y_data(curr_pose)
 
-            v2 = Vertex(curr_pose, scan_data)
+            v2 = Vertex(curr_pose, noisy_scan_msg)
             edge = Edge(v1, v2)
             graph.add_vertex(v2)
             graph.add_edges(edge)
-            ret = icp(v1, v2, [0,0,0], 13)
-            dst = np.array([v2.scan_data.T], copy=True).astype(np.float32)
-            dst = cv2.transform(dst, ret)
-            x = dst[0].T[0]
-            y = dst[0].T[1]
-            icp_scan = np.array([x, y])
-            v1 = deepcopy(v2)
+            # ret = icp(v1, v2, [0,0,0], 13)
+            # dst = np.array([v2.scan_data.T], copy=True).astype(np.float32)
+            # dst = cv2.transform(dst, ret)
+            # x = dst[0].T[0]
+            # y = dst[0].T[1]
+            # icp_scan = np.array([x, y])
+            # v1 = deepcopy(v2)
             #map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
+
+            T, distances, i = icp.icp(v1, v2)
+            #print("T", T)
+            A = np.array(v1.x_y_data)
+            B = np.array(v2.x_y_data)
+            B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
+            B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+
+            B_trans= np.dot(T[0:2], B_trans.T).T
+            #print("A", A)
+            #print("B", B)
+            #print("B transformed", B_trans)
+
+            v1 = deepcopy(v2)
+            map_msg = optimize_map_msg(B_trans, curr_pose, copy(non_op_map))
 
             
 
