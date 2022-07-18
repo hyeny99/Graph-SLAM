@@ -66,7 +66,7 @@ def nearest_neighbor(src, dst):
     return distances.ravel(), indices.ravel()
 
 
-def icp(A_vertex: Vertex, B_vertex: Vertex, init_pose=None, max_iterations=20, tolerance=0.001):
+def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     '''
     The Iterative Closest Point method: finds best-fit transform that maps points A on to points B
     Input:
@@ -81,8 +81,8 @@ def icp(A_vertex: Vertex, B_vertex: Vertex, init_pose=None, max_iterations=20, t
         i: number of iterations to converge
     '''
 
-    A = np.array(A_vertex.x_y_data)
-    B = np.array(B_vertex.x_y_data)
+    # A = np.array(A_vertex.x_y_data)
+    # B = np.array(B_vertex.x_y_data)
 
     assert A.shape == B.shape
 

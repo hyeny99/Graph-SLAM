@@ -1,114 +1,200 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
-
-
-# iterative closest point 
-# inspired by http://stackoverflow.com/questions/20120384/iterative-closest-point-icp-implementation-on-python
-
-
-import cv2
+from cProfile import label
+from turtle import color
 import numpy as np
-import sys
-from numpy.random import *
+import time
+import icp
 import matplotlib.pyplot as plt
 
+# Constants
+N = 100                                    # number of random points in the dataset
+num_tests = 100                             # number of test iterations
+dim = 2                                     # number of dimensions of the points
+noise_sigma = .01                           # standard deviation error to be added
+translation = .1                            # max translation of the test set
+rotation = .1                               # max rotation (radians) of the test set
 
-def del_miss(indeces, dist, max_dist, th_rate = 0.8):
-    th_dist = max_dist * th_rate
-    return np.array([indeces[0][np.where(dist.T[0] < th_dist)]])
+
+def rotation_matrix(axis, theta):
+    axis = axis/np.sqrt(np.dot(axis, axis))
+    a = np.cos(theta/2.)
+    b, c, d = -axis*np.sin(theta/2.)
+
+    return np.array([[a*a+b*b-c*c-d*d, 2*(b*c-a*d), 2*(b*d+a*c)],
+                  [2*(b*c+a*d), a*a+c*c-b*b-d*d, 2*(c*d-a*b)],
+                  [2*(b*d-a*c), 2*(c*d+a*b), a*a+d*d-b*b-c*c]])
 
 
-def is_converge(Tr, scale):
-    delta_angle = 0.0001
-    delta_scale = scale * 0.0001
+def test_best_fit():
+
+    # Generate a random dataset
+    A = np.random.rand(N, dim)
+
+    total_time = 0
+
+    for i in range(num_tests):
+
+        B = np.copy(A)
+
+        # Translate
+        t = np.random.rand(dim)*translation
+        B += t
+
+        # Rotate
+        R = rotation_matrix(np.random.rand(dim), np.random.rand()*rotation)
+        B = np.dot(R, B.T).T
+
+        # Add noise
+        B += np.random.randn(N, dim) * noise_sigma
+
+        # Find best fit transform
+        start = time.time()
+        T, R1, t1 = icp.best_fit_transform(B, A)
+        total_time += time.time() - start
+
+        # Make C a homogeneous representation of B
+        C = np.ones((N, 4))
+        C[:,0:3] = B
+
+        # Transform C
+        C = np.dot(T, C.T).T
+
+        assert np.allclose(C[:,0:3], A, atol=6*noise_sigma) # T should transform B (or C) to A
+        assert np.allclose(-t1, t, atol=6*noise_sigma)      # t and t1 should be inverses
+        assert np.allclose(R1.T, R, atol=6*noise_sigma)     # R and R1 should be inverses
+
+    print('best fit time: {:.3}'.format(total_time/num_tests))
+
+    return
+
+
+def test_icp(A, B):
+
+    # Generate a random dataset
+    #A = np.random.rand(N, dim)
+
+    total_time = 0
+    #plot(A, B)
+
+
+    for i in range(num_tests):
+
+        #B = np.copy(A)
+
+        # Translate
+        # t = np.random.rand(dim)*translation
+        # B += t
+
+        # # Rotate
+        # R = rotation_matrix(np.random.rand(dim), np.random.rand() * rotation)
+        # B = np.dot(R, B.T).T
+
+        # # Add noise
+        # B += np.random.randn(N, dim) * noise_sigma
+
+        # # Shuffle to disrupt correspondence
+        # np.random.shuffle(B)
+
+        # Run ICP
+        start = time.time()
+        T, distances, iterations = icp.icp(B, A, tolerance=0.000001)
+        total_time += time.time() - start
+
+        # Make C a homogeneous representation of B
+        C = np.ones((N, dim+1))
+        C[:,0:dim] = np.copy(B)
+
+        # Transform C
+        C = np.dot(T, C.T).T
+
+        assert np.mean(distances) < 6*noise_sigma                   # mean error should be small
+        # assert np.allclose(T[0:3,0:3].T, R, atol=6*noise_sigma)     # T and R should be inverses
+        # assert np.allclose(-T[0:3,3], t, atol=6*noise_sigma)        # T and t should be inverses
+
+    #print('icp time: {:.3}'.format(total_time/num_tests))
+    plot(A, B, C)
+
+    return
+
+def plot(A, B, C):
+    A_x = []
+    A_y = []
+    for i in range(len(A)):
+        A_x.append(A[i][0])
+        A_y.append(A[i][1])
     
-    min_cos = 1 - delta_angle
-    max_cos = 1 + delta_angle
-    min_sin = -delta_angle
-    max_sin = delta_angle
-    min_move = -delta_scale
-    max_move = delta_scale
+    B_x = []
+    B_y = []
+    for i in range(len(B)):
+        B_x.append(B[i][0])
+        B_y.append(B[i][1])
+
+    C_x = []
+    C_y = []
+    for i in range(len(C)):
+        C_x.append(C[i][0])
+        C_y.append(C[i][1])
     
-    return min_cos < Tr[0, 0] and Tr[0, 0] < max_cos and \
-           min_cos < Tr[1, 1] and Tr[1, 1] < max_cos and \
-           min_sin < -Tr[1, 0] and -Tr[1, 0] < max_sin and \
-           min_sin < Tr[0, 1] and Tr[0, 1] < max_sin and \
-           min_move < Tr[0, 2] and Tr[0, 2] < max_move and \
-           min_move < Tr[1, 2] and Tr[1, 2] < max_move
+    plt.plot(A_x, A_y,  mec = 'hotpink', mfc = 'hotpink', label='A')
+    plt.plot(B_x, B_y,  mec = '#4CAF50', mfc = '#4CAF50', label='B')
+    plt.plot(C_x, C_y,  mec = 'r', mfc = 'r', label="transformed")
+    plt.legend()
+    plt.show()
 
-# <codecell>
-
-def icp(d1, d2, max_iterate = 100):
-    src = np.array([d1.T], copy=True).astype(np.float32)
-    dst = np.array([d2.T], copy=True).astype(np.float32)
-    
-    knn = cv2.ml.KNearest_create()
-    responses = np.array(range(len(d2[0]))).astype(np.float32)
-    #print(src[0])
-    #print(responses)
-    knn.train(src[0], cv2.ml.ROW_SAMPLE, responses)
-        
-    # rotation    
-    Tr = np.array([[np.cos(0), -np.sin(0), 0],
-                   [np.sin(0), np.cos(0),  0],
-                   [0,         0,          1]])
-
-    dst = cv2.transform(dst, Tr[0:2])
-    max_dist = sys.maxsize
-    
-    scale_x = np.max(d1[0]) - np.min(d1[0])
-    scale_y = np.max(d1[1]) - np.min(d1[1])
-    scale = max(scale_x, scale_y)
-       
-    for i in range(max_iterate):
-        ret, results, neighbours, dist = knn.findNearest(dst[0], 1)
-        
-        indeces = results.astype(np.int32).T     
-        indeces = del_miss(indeces, dist, max_dist)  
-        
-        T = cv2.estimateAffine2D(dst[0, indeces], src[0, indeces], True)
-        print(np.shape(np.array(T)))
-        max_dist = np.max(dist)
-        dst = cv2.transform(dst, np.float32(T))
-        Tr = np.dot(np.vstack((T,[0,0,1])), Tr)
-        
-        if (is_converge(T, scale)):
-            break
-        
-    return Tr[0:2]
-
-# <codecell>
-
-if __name__ == "__main__":
-    
-    point_count = 100
+def create_data():
+   
     th = np.pi / 8
     move = np.array([[0.30], [0.5]])
     rnd_scale = 0.03
-    x1 = np.linspace(0, 1.1, point_count)
+    x1 = np.linspace(0, 1.1, N)
     y1 = np.sin(x1 * np.pi)
-    d1 = np.array([x1, y1])
+    data1 = np.array([x1, y1])
+    d1 = []
+
+    for i in range(N):
+        d1.append([data1[0][i], data1[1][i]])
+    
+    d1 = np.array(d1).astype(np.float32)
+
 
     rot = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
-    rand = np.random.rand(2, point_count)*rnd_scale
-    d2 = np.dot(rot, d1) + move
-    d2 = np.add(d2, rand)
+    rand = np.random.rand(2, N)*rnd_scale
+    data2 = np.dot(rot, data1) + move
+    data2 = np.add(data2, rand)
+    d2 = []
 
-    #plt.plot(d1[0], d1[1])
-    #plt.plot(d2[0], d2[1])
-    #plt.show()
+    for i in range(N):
+        d2.append([data2[0][i], data2[1][i]])
+    d2 = np.array(d2).astype(np.float32)
 
+    #print(np.shape(d1), np.shape(d2))
 
-    ret = icp(d1, d2)
+    # A_x = []
+    # A_y = []
+    # for i in range(len(d1)):
+    #     A_x.append(d1[i][0])
+    #     A_y.append(d1[i][1])
+
+    return d1, d2
+
+    # plt.plot(data1[0], data1[1], label="original A")
+    # plt.plot(data2[0], data2[1], label="original B")
+    # plt.plot(A_x, A_y, label="modified A")
+    # plt.legend()
+    # plt.show()
     
-    plt.plot(d1[0], d1[1])
-    dst = np.array([d2.T], copy=True).astype(np.float32)
-    dst = cv2.transform(dst, ret)
-    plt.plot(dst[0].T[0], dst[0].T[1])
-    plt.show()
-    
-    print (ret[0][0] * ret[0][0] + ret[0][1] * ret[0][1])
-    print (np.arccos(ret[0][0]) / 2 / np.pi * 360)
-    print (np.arcsin(ret[0][1]) / 2 / np.pi * 360)
 
-    print(ret) 
+
+
+
+if __name__ == "__main__":
+    d1, d2 = create_data()
+    # A_x = []
+    # A_y = []
+    # for i in range(len(d1)):
+    #     A_x.append(d1[i][0])
+    #     A_y.append(d1[i][1])
+    # plt.plot(A_x, A_y, label="modified A")
+    # plt.legend()
+    # plt.show()
+    #test_best_fit()
+    test_icp(d1, d2)
