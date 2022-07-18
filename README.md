@@ -1,5 +1,8 @@
 # autonomous_navigation
 
+## Setup
+
+
 
 ## Odometry noisy model
 The odometry sensor is assumed to be correct and it is the ground truth.
