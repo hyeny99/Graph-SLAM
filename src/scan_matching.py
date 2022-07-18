@@ -66,7 +66,7 @@ def is_converge(Tr, scale):
 def icp(a: Vertex, b: Vertex, init_pose, n_iteration):
     #print(a.scan_data)
     data_a = np.array(uniform_subsampling(a.scan_data))
-    print(len(data_a))
+    #print(len(data_a))
     data_b = np.array(uniform_subsampling(b.scan_data))
 
     src = np.array([data_a.T], copy=True).astype(np.float32)
@@ -77,6 +77,7 @@ def icp(a: Vertex, b: Vertex, init_pose, n_iteration):
     #knn = NearestNeighbors(n_neighbors=1, algorithm='auto')
     knn = cv2.ml.KNearest_create()
     responses = np.array(range(len(data_b[0]))).astype(np.float32)
+    print(responses)
     knn.train((src[0]), responses)
 
     Tr = np.array([[np.cos(init_pose[0]), -np.sin(init_pose[1]), 0],
