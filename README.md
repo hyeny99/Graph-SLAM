@@ -9,6 +9,9 @@ The previous model uses random.uniform, it creates uniform error between -0.01 t
 The new model follows normal distributions and a robot motion model.
 Here are the graphs that show the difference in error distributions.
 
-![Alt Text](./uniform_error_model.png?raw=true "Title")
+<p align="center">
+  <img src="./src/images/uniform_error_model.png" width="400" />
+  <img src="./src/images/normal_error_model.png" width="400" /> 
+</p>
 
 
