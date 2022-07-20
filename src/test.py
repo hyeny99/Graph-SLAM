@@ -6,7 +6,7 @@ import icp
 import matplotlib.pyplot as plt
 
 # Constants
-N = 100                                    # number of random points in the dataset
+N = 240                                    # number of random points in the dataset
 num_tests = 100                             # number of test iterations
 dim = 2                                     # number of dimensions of the points
 noise_sigma = .01                           # standard deviation error to be added

@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import math
+from copy import deepcopy
 
 class Vertex():
     verticies = []
@@ -28,6 +29,10 @@ class Graph():
 
     def add_edges(self, edge):
         self.edges.append(edge)
+    
+    def update_scan_data(self, vertex:Vertex, x_y_data):
+        vertex.x_y_data = x_y_data
+        return
 
 
 

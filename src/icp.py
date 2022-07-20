@@ -4,6 +4,8 @@ from sklearn.neighbors import NearestNeighbors
 from graph import Vertex
 import statistics
 
+outlier_rejection = True
+
 
 def uniform_sampling(A, B):
     # raw data has 60 points (x, y) from -30 degrees to +30 degrees
@@ -164,13 +166,17 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         distances, indices = nearest_neighbor(src[:m,:].T, dst[:m,:].T)
         mean_error = np.mean(distances)
 
-        passed_pairs = check_outlier(np.copy(distances), mean_error, indices) # [src, dst]
-        assert len(passed_pairs[0]) == len(passed_pairs[1])
-            
-        # compute the transformation between the current source and nearest destination points
-        T,_,_ = best_fit_transform(src[:m,passed_pairs[0]].T, dst[:m,passed_pairs[1]].T)
-        # print(np.shape(src))
+        if outlier_rejection:
+            passed_pairs = check_outlier(np.copy(distances), mean_error, indices) # [src, dst]
+            assert len(passed_pairs[0]) == len(passed_pairs[1])
+            T,_,_ = best_fit_transform(src[:m,passed_pairs[0]].T, dst[:m,passed_pairs[1]].T)
 
+
+        else:
+            # compute the transformation between the current source and nearest destination points
+            T,_,_ = best_fit_transform(src[:m,:].T, dst[:m,indices].T)
+
+        
         # update the current source
         src = np.dot(T, src)
 

@@ -317,6 +317,9 @@ if __name__== "__main__":
     map_pub = rospy.Publisher("/map", OccupancyGrid, queue_size=1)
     particle_pub = rospy.Publisher("/particles", PoseArray, queue_size=1)
 
+    map_msg = build_map(v1.scan_data, curr_pose, map)
+    map_pub.publish(map_msg)
+
 
     while not rospy.is_shutdown():
         # Measurements (odom) : getting noisy dx, dy and dyaw
@@ -342,11 +345,9 @@ if __name__== "__main__":
         scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
         noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        non_op_map = deepcopy(map)
+        #non_op_map = deepcopy(map)
 
-        map_msg = build_map(noisy_scan_msg, curr_pose, map)
-        map_pub.publish(map_msg)
-
+        #map_msg = build_map(noisy_scan_msg, curr_pose, map)
         dx_p = mark_point[0,0] - curr_pose[0,0]
         dy_p = mark_point[1,0] - curr_pose[1,0]
         dyaw_p = mark_point[2,0] - curr_pose[2,0]
@@ -360,27 +361,19 @@ if __name__== "__main__":
             edge = Edge(v1, v2)
             graph.add_vertex(v2)
             graph.add_edges(edge)
-            # ret = icp(v1, v2, [0,0,0], 13)
-            # dst = np.array([v2.scan_data.T], copy=True).astype(np.float32)
-            # dst = cv2.transform(dst, ret)
-            # x = dst[0].T[0]
-            # y = dst[0].T[1]
-            # icp_scan = np.array([x, y])
-            # v1 = deepcopy(v2)
-            #map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
+        
             A = np.array(v1.x_y_data) # destination
             B = np.array(v2.x_y_data) # source
-            # T, distances, i = icp.icp(B, A)
-            # #print("T", T)
-            # B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
-            # B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+            T, distances, i = icp.icp(B, A)
+            #print("T", T)
+            B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
+            B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+            B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
+            graph.update_scan_data(v2, B_trans)
 
-            # B_trans= np.dot(T[0:2], B_trans.T).T
-
-            test_icp(A, B)
-
+            #test_icp(A, B)
             v1 = deepcopy(v2)
-            #map_msg = optimize_map_msg(B_trans, curr_pose, copy(non_op_map))
+            map_msg = optimize_map_msg(B_trans, curr_pose, copy(map_msg))
 
             
 
