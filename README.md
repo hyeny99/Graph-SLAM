@@ -9,7 +9,7 @@ Scikit-learn is used for the ICP algorithm. Please install the library in order 
 If you are on Linux, you can install it by typing "pip install scikit-learn" on a command terminal.
 
 ## Start the simulation
-Please launch gazebo.launch in bachelors_thesis folder.
+Please launch gazebo.launch in autonomous_navigation folder.
 When Rviz and Gazebo pop up on the screen and start working, add map, pointArray and path on Rviz. <br>
 Open up another command terminal and run graph_slam.py. 
 Set a right topic for each map, pointARray and path on Rviz.
@@ -27,6 +27,8 @@ Here are the graphs that show the difference in error distributions.
   <img src="./src/images/uniform_error_model.png" width="400" />
   <img src="./src/images/normal_error_model.png" width="400" /> 
 </p>
+
+## Scan matching
 
 
 
