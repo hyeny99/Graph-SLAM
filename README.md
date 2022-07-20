@@ -1,4 +1,4 @@
-# autonomous_navigation
+# Graph-SLAM
 
 ## Setup
 CHAMP is used for a model of a robot. ROS packages for CHAMP can be found [here](https://github.com/chvmp/champ).
