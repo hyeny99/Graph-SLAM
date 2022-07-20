@@ -1,7 +1,7 @@
 # autonomous_navigation
 
 ## Setup
-CHAMP is used as a robot model. ROS packages for CHAMP can be found [here](https://github.com/chvmp/champ).
+CHAMP is used for a model of a robot. ROS packages for CHAMP can be found [here](https://github.com/chvmp/champ).
 A couple of launch and rviz files are modified according to the purpose of the project.
 Please change the rviz launch file in the champ_description folder as stated in rviz_viewer.launch file.
 
