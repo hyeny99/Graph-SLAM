@@ -14,6 +14,7 @@ from noisy_sensor import Noisy_sensor
 import noisy_odom
 #from scan_matching import *
 import icp
+from test import test_icp
 
 # Config parameters
 dt = 0.01 # time between measurements
@@ -367,26 +368,24 @@ if __name__== "__main__":
             # icp_scan = np.array([x, y])
             # v1 = deepcopy(v2)
             #map_msg = optimize_map_msg(icp_scan, curr_pose, copy(non_op_map))
+            A = np.array(v1.x_y_data) # destination
+            B = np.array(v2.x_y_data) # source
+            # T, distances, i = icp.icp(B, A)
+            # #print("T", T)
+            # B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
+            # B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
 
-            T, distances, i = icp.icp(v1, v2)
-            #print("T", T)
-            A = np.array(v1.x_y_data)
-            B = np.array(v2.x_y_data)
-            B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
-            B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+            # B_trans= np.dot(T[0:2], B_trans.T).T
 
-            B_trans= np.dot(T[0:2], B_trans.T).T
-            #print("A", A)
-            #print("B", B)
-            #print("B transformed", B_trans)
+            test_icp(A, B)
 
             v1 = deepcopy(v2)
-            map_msg = optimize_map_msg(B_trans, curr_pose, copy(non_op_map))
+            #map_msg = optimize_map_msg(B_trans, curr_pose, copy(non_op_map))
 
             
 
         path_msg = update_path_msg(copy(path), curr_pose)
-        #map_pub.publish(map_msg)
+        map_pub.publish(map_msg)
         path_pub.publish(path_msg)
        
         particle_pub.publish(particles)

@@ -1,7 +1,27 @@
+from copy import deepcopy
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from graph import Vertex
+import statistics
 
+
+def uniform_sampling(A, B):
+    # raw data has 60 points (x, y) from -30 degrees to +30 degrees
+    # error of a range finder is uniform over the distance
+    # It should be noted that the accuracy error of the laser rangefinder is not proportional to the measurement distance, 
+    # the entire distance is the same, but if the distance is too long, the error will increase by ±0.5mm/100m.
+    assert A.shape == B.shape
+    A_sample = []
+    B_sample = []
+
+    for i in range(0, len(A), 2):
+        A_sample.append(A[i])
+        B_sample.append(B[i])
+    
+    A_sample = np.array(A_sample)
+    B_sample = np.array(B_sample)
+
+    return A_sample, B_sample
 
 def best_fit_transform(A, B):
     '''
@@ -14,7 +34,8 @@ def best_fit_transform(A, B):
       R: mxm rotation matrix
       t: mx1 translation vector
     '''
-
+    print(A.shape)
+    print(B.shape)
     assert A.shape == B.shape
 
     # get number of dimensions
@@ -55,7 +76,7 @@ def nearest_neighbor(src, dst):
         dst: Nxm array of points
     Output:
         distances: Euclidean distances of the nearest neighbor
-        indices: dst indices of the nearest neighbor
+        indices: dst indices of the nearest neighbor [src, dst]
     '''
 
     assert src.shape == dst.shape
@@ -63,7 +84,44 @@ def nearest_neighbor(src, dst):
     neigh = NearestNeighbors(n_neighbors=1)
     neigh.fit(dst)
     distances, indices = neigh.kneighbors(src, return_distance=True)
+
     return distances.ravel(), indices.ravel()
+
+
+def check_outlier(distances, mean_error, indices):
+    diff = np.copy(distances)
+    #diff = [distance - mean_error for distance in d]
+    diff.sort()
+    q1 = []
+    q3 = []
+    median = int(len(diff) / 2)
+    if len(diff) % 2 == 0:
+        q1 = diff[:median-1]
+    else:
+        q1 = diff[:median]
+
+    q3 = diff[median+1:]
+
+    q1_median = statistics.median(q1)
+    q3_median = statistics.median(q3)
+
+    iqr = q3_median - q1_median
+    upper_fence = q3_median + (1.5 * iqr)
+    lower_fence = q1_median - (1.5 * iqr)
+
+    src_indicies = []
+    dst_indicies = []
+
+    for i in range(len(distances)):
+        if distances[i] < lower_fence or distances[i] > upper_fence:
+            continue
+
+        src_indicies.append(i)
+        dst_indicies.append(indices[i])
+    passed = [src_indicies, dst_indicies]
+    
+    return passed
+
 
 
 def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
@@ -81,9 +139,9 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         i: number of iterations to converge
     '''
 
-    # A = np.array(A_vertex.x_y_data)
-    # B = np.array(B_vertex.x_y_data)
-
+    assert A.shape == B.shape
+    
+    A, B = uniform_sampling(A, B)
     assert A.shape == B.shape
 
     # get number of dimensions
@@ -102,19 +160,25 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     prev_error = 0
 
     for i in range(max_iterations):
-        # find the nearest neighbors between the current source and destination points
+        # find the nearest neighbors between the current source and destination points (m = num of dimensions)
         distances, indices = nearest_neighbor(src[:m,:].T, dst[:m,:].T)
+        mean_error = np.mean(distances)
 
+        passed_pairs = check_outlier(np.copy(distances), mean_error, indices) # [src, dst]
+        assert len(passed_pairs[0]) == len(passed_pairs[1])
+            
         # compute the transformation between the current source and nearest destination points
-        T,_,_ = best_fit_transform(src[:m,:].T, dst[:m,indices].T)
+        T,_,_ = best_fit_transform(src[:m,passed_pairs[0]].T, dst[:m,passed_pairs[1]].T)
+        # print(np.shape(src))
 
         # update the current source
         src = np.dot(T, src)
 
         # check error
-        mean_error = np.mean(distances)
         if np.abs(prev_error - mean_error) < tolerance:
             break
+
+            
         prev_error = mean_error
 
     # calculate final transformation
