@@ -18,14 +18,6 @@ a2 = 5.0 * math.pi / 180.0
 a3 = 0.01
 a4 = 0.01
 
-# default pose
-#pose = [-2.0, 0.0, 0.0]
-
-# # dx, dy, dyaw
-# dx = 0.3
-# dy = 0.5
-# theta1 = 25.0 * math.pi / 180.0 # in rad
-# theta2 = 10.0 * math.pi / 180.0
 
 
 def get_rotation (msg):
@@ -95,30 +87,6 @@ def get_noisy_odom(prev_pose, curr_odom):
     dyaw = rot1 + rot2
 
     return dx, dy, dyaw
-
-    # pose[0] = trans * math.cos(theta1 + rot1)
-    # pose[1] = trans * math.sin(theta1 + rot1)
-    # pose[2] = pose[2] + rot1 + rot2
-
-    # x = []
-    # y = []
-    # yaw = []
-
-    # for i in range(1000):
-    #     t = trans + np.random.normal(0, sd_trans**2) 
-    #     r1 = rot1 + np.random.normal(0, sd_rot1**2)
-    #     r2 = rot2 + np.random.normal(0, sd_rot2**2)
-
-    #     pose[0] = t * math.cos(theta1 + rot1)
-    #     pose[1] = t * math.sin(theta1 + rot1)
-    #     pose[2] = pose[2]1 + r2
-        
-    #     x.append(t * math.cos(theta1 + r1))
-    #     y.append(t * math.sin(theta1 + r1))
-    #     yaw.append(pose[2])
-    
-    # plot(x, y)
-    # return pose[0], pose[1], pose[2]
 
 
 def plot(x, y):
