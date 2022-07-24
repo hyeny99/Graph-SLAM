@@ -7,13 +7,13 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 
 # initial pose
-x = 0
-y = 0
+x = 0.1
+y = 0.1
 theta1 = 25.0 * math.pi / 180.0 # in rad
 
 # dx, dy, dyaw
-dx = 0.3
-dy = 0.5
+dx = 0.2
+dy = 0.35
 theta2 = 10.0 * math.pi / 180.0
 
 # alpha parameters
@@ -49,29 +49,21 @@ def test_noisy_odom():
 
 
     fig, ax = plt.subplots()
-    ax.set_xlim([0, 0.8])
-    ax.set_ylim([0, 0.8])
-    ax.scatter(x_noise, y_noise, color='blue', label="with Gaussian noise")
-    ax.scatter(x_no_noise, y_no_noise, color='hotpink', label="without noise")
+    # ax.set_xlim([0, 0.5])
+    # ax.set_ylim([0, 0.5])
+    ax.scatter(x_noise, y_noise, color='blue', s=20, label="with Gaussian noise")
+    ax.scatter(x_no_noise, y_no_noise, color='hotpink', s=20, label="without noise")
     ax.set_title('Gaussian noise of motion model')
     ax.set_xlabel("x(m)")
     ax.set_ylabel("y(m)")
     ax.legend()
-
-
-    # plt.plot(x_noise, y_noise, 'o', mec = '#4CAF50', mfc = '#4CAF50', label="with Gaussian noise")
-    # plt.plot(x_no_noise, y_no_noise, 'o', mec = 'hotpink', mfc = 'hotpink', label="without noise")
-    # plt.title('Gaussian noise of motion model')
-    # plt.xlabel("x(m)")
-    # plt.ylabel("y(m)")
-    # plt.legend()
-    # plt.show()
-
-    path = '../images/leg_stretched.png'
-    offset = OffsetImage(plt.imread(path), zoom=1)
-    ab = AnnotationBbox(offset, (x, y), frameon=False)
-    ax.add_artist(ab)
     plt.show()
+
+    # path = '../images/leg_stretched.png'
+    # offset = OffsetImage(plt.imread(path), zoom=0.08)
+    # ab = AnnotationBbox(offset, (x, y), frameon=False)
+    # ax.add_artist(ab)
+    # plt.show()
 
 
 if __name__ == '__main__':
