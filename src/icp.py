@@ -36,8 +36,8 @@ def best_fit_transform(A, B):
       R: mxm rotation matrix
       t: mx1 translation vector
     '''
-    print(A.shape)
-    print(B.shape)
+    # print(A.shape)
+    # print(B.shape)
     assert A.shape == B.shape
 
     # get number of dimensions
@@ -146,6 +146,8 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     A, B = uniform_sampling(A, B)
     assert A.shape == B.shape
 
+    is_converged = False
+
     # get number of dimensions
     m = A.shape[1]
 
@@ -180,8 +182,9 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         # update the current source
         src = np.dot(T, src)
 
-        # check error
+        # check error // converges
         if np.abs(prev_error - mean_error) < tolerance:
+            is_converged = True
             break
 
             
@@ -190,4 +193,4 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     # calculate final transformation
     T,_,_ = best_fit_transform(A, src[:m,:].T)
 
-    return T, distances, i
+    return T, distances, i, is_converged

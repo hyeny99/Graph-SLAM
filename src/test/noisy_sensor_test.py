@@ -10,14 +10,14 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 
-import os
-import sys
-import inspect
+# import os
+# import sys
+# import inspect
 
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir) 
-import noisy_sensor
+# currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+# parentdir = os.path.dirname(currentdir)
+# sys.path.insert(0, parentdir) 
+# import noisy_sensor
 
 dt = 0.1
 

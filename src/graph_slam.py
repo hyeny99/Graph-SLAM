@@ -1,4 +1,10 @@
 #! /usr/bin/env python3
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0, currentdir) 
 
 import rospy
 import math
@@ -14,7 +20,7 @@ from noisy_sensor import Noisy_sensor
 import noisy_odom
 #from scan_matching import *
 import icp
-from test import test_icp
+from test_icp import plot
 
 # Config parameters
 dt = 0.01 # time between measurements
@@ -266,6 +272,7 @@ def update_particle(particles_msg, curr_pose):
     return particles_msg
 
 
+
 def optimize_map_msg(icp_scan, curr_pose, non_op_map):
     for i in range(len(icp_scan[0])):
         icp_x = icp_scan[0][i]
@@ -298,9 +305,9 @@ if __name__== "__main__":
     curr_pose[2, 0] = 0
 
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-    noisy_scan_msg = Noisy_sensor(scan_msg)
+    #noisy_scan_msg = Noisy_sensor(scan_msg)
     #scan_data = noisy_scan_msg.x_y_data(curr_pose)
-    v1 = Vertex(curr_pose, noisy_scan_msg)
+    v1 = Vertex(curr_pose, scan_msg)
     graph.add_vertex(v1)
 
 
@@ -326,61 +333,67 @@ if __name__== "__main__":
         curr_odom =  rospy.wait_for_message("/odom", Odometry, timeout=None)
         dx, dy, dyaw = noisy_odom.get_noisy_odom(prev_pose, curr_odom)
    
+        # update robot pose (belief)
         curr_pose[0,0] = curr_pose[0,0] + dx
         curr_pose[1,0] = curr_pose[1,0] + dy
         curr_pose[2,0] = curr_pose[2,0] + dyaw
         #print("curr_pose", curr_pose[0,0], curr_pose[1,0])
 
+        # curr_pose[0,0] = curr_pose[0,0] + curr_odom.pose.pose.position.x - prev_x
+        # curr_pose[1,0] = curr_pose[1,0] + curr_odom.pose.pose.position.y - prev_y
+        # curr_pose[2,0] = curr_pose[2,0] + get_rotation(curr_odom) - prev_yaw
+
         prev_x = curr_odom.pose.pose.position.x
         prev_y = curr_odom.pose.pose.position.y
         prev_yaw = get_rotation(curr_odom)
         prev_pose = [prev_x, prev_y, prev_yaw]
-
-        # update robot pose (belief)
-        curr_pose[0,0] = curr_pose[0,0] + dx
-        curr_pose[1,0] = curr_pose[1,0] + dy
-        curr_pose[2,0] = curr_pose[2,0] + dyaw
+        
 
         # Measurements (laser)
         scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-        noisy_scan_msg = Noisy_sensor(scan_msg)
+        #noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        #non_op_map = deepcopy(map)
+        non_op_map = deepcopy(map_msg)
 
         #map_msg = build_map(noisy_scan_msg, curr_pose, map)
         dx_p = mark_point[0,0] - curr_pose[0,0]
         dy_p = mark_point[1,0] - curr_pose[1,0]
         dyaw_p = mark_point[2,0] - curr_pose[2,0]
 
+        # map_msg = build_map(scan_msg, curr_pose, copy(map_msg))
+
         r = math.sqrt(dx_p**2 + dy_p**2)
-        if r > 0.5 or dyaw_p > 0.5:
+        if r > 0.3 or dyaw_p > 0.3:
             particles = update_particle(copy(particles), curr_pose)
             mark_point = deepcopy(curr_pose)
 
-            v2 = Vertex(curr_pose, noisy_scan_msg)
+            v2 = Vertex(curr_pose, scan_msg)
             edge = Edge(v1, v2)
             graph.add_vertex(v2)
             graph.add_edges(edge)
-        
+
+            map_msg = build_map(v2.scan_data, v2.pose, copy(non_op_map))
+            
             A = np.array(v1.x_y_data) # destination
             B = np.array(v2.x_y_data) # source
-            T, distances, i = icp.icp(B, A)
-            #print("T", T)
-            B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
-            B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
-            B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
-            graph.update_scan_data(v2, B_trans)
-
-            #test_icp(A, B)
+            T, distances, i, is_converged = icp.icp(B, A, tolerance=0.0001)
+            if is_converged:
+                #print("T", T)
+                B_trans = np.ones((len(scan_msg.ranges), 3))
+                B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+                B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
+                graph.update_scan_data(v2, B_trans)
+                #    print("B", B)
+                # print("B_trans", B_trans)
+                map_msg = optimize_map_msg(B, curr_pose, copy(non_op_map))
+                plot(A, B, B_trans)
             v1 = deepcopy(v2)
-            map_msg = optimize_map_msg(B_trans, curr_pose, copy(map_msg))
 
-            
 
+        
         path_msg = update_path_msg(copy(path), curr_pose)
         map_pub.publish(map_msg)
         path_pub.publish(path_msg)
-       
         particle_pub.publish(particles)
 
 

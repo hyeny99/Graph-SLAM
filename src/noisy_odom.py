@@ -12,12 +12,17 @@ toggle_noise = 1.0
 
 #error = 0.01
 
-# alpha parameters
-a1 = 0.01
-a2 = 5.0 * math.pi / 180.0
-a3 = 0.01
-a4 = 0.01
+# # alpha parameters
+# a1 = 0.05
+# a2 = 15.0 * math.pi / 180.0
+# a3 = 0.05
+# a4 = 0.01
 
+# # alpha parameters
+a1 = 0.005                       # unitless
+a2 = 0.005                      # rad^2 / m^2 (drift)
+a3 = 0.005                      # unitless
+a4 = 0.005                       # m^2 / rad^2 (moves forward/backward during a turn)
 
 
 def get_rotation (msg):
@@ -36,31 +41,6 @@ def get_quaternion_from_euler(roll, pitch, yaw):
 
   return [qx, qy, qz, qw]
 
-# def set_prev_odom(odom):
-#     pose[0] = odom.pose.pose.position.x
-#     pose[1] = odom.pose.pose.position.y
-#     pose[2] = get_rotation(odom)
-#     return pose
-
-# def get_old_noisy_odom():
-#     # curr_pos = rospy.wait_for_message("/odom", Odometry, timeout=None)
-#     #print("it's working")
-#     #curr_yaw = get_rotation(odom)
-
-#     x = []
-#     y = []
-    
-#     for i in range(1000):
-#         dis_x = dx + random.uniform(-error, error) * toggle_noise
-#         dis_y = dy + random.uniform(-error, error) * toggle_noise
-#         d_yaw = theta1 + theta2 + random.uniform(-error, error) * toggle_noise
-#         x.append(dis_x)
-#         y.append(dis_y)
-    
-#     plot(x, y)
-    
-#     return pose[0] + dis_x, pose[1] + dis_y, pose[2] + d_yaw
-
 
 
 def get_noisy_odom(prev_pose, curr_odom):
@@ -74,13 +54,21 @@ def get_noisy_odom(prev_pose, curr_odom):
     rot1  = math.atan2(dy, dx) - theta1
     rot2  = theta2 - theta1 - rot1
 
-    sd_rot1 = a1 * abs(rot1) + a2 * trans
-    sd_rot2 = a1 * abs(rot2) + a2 * trans
-    sd_trans = a3 * trans + a4 * (abs(rot1) + abs(rot2))
+    # sd_rot1 = a1 * abs(rot1) + a2 * abs(trans)
+    # sd_rot2 = a1 * abs(rot2) + a2 * abs(trans)
+    # sd_trans = a3 * trans + a4 * (abs(rot1) + abs(rot2))
 
-    trans = trans + np.random.normal(0, sd_trans**2) * toggle_noise
-    rot1 = rot1 + np.random.normal(0, sd_rot1**2) * toggle_noise
-    rot2 = rot2 + np.random.normal(0, sd_rot2**2) * toggle_noise
+    sd_rot1 = a1 * (rot1**2) + a2 * (trans**2)
+    sd_rot2 = a1 * (rot2**2) + a2 * (trans**2)
+    sd_trans = a3 * (trans**2) + a4 * (rot1**2 + rot2**2)
+
+    trans = trans + sample_gaussian(sd_trans) * toggle_noise
+    rot1 = rot1 + sample_gaussian(sd_rot1) * toggle_noise
+    rot2 = rot2 + sample_gaussian(sd_rot2) * toggle_noise
+
+    # trans = trans + np.random.normal(0, sd_trans**2) * toggle_noise
+    # rot1 = rot1 + np.random.normal(0, sd_rot1**2) * toggle_noise
+    # rot2 = rot2 + np.random.normal(0, sd_rot2**2) * toggle_noise
     
     dx = trans * math.cos(theta1 + rot1)
     dy = trans * math.sin(theta1 + rot1)
@@ -88,12 +76,36 @@ def get_noisy_odom(prev_pose, curr_odom):
 
     return dx, dy, dyaw
 
+def sample_gaussian(sigma):
+    x1 = x2 = w = r = 0.0
 
-def plot(x, y):
-    fig, ax = plt.subplots()
-    ax.scatter(x, y)
-    ax.set_title('Gaussian noise of motion model')
-    plt.show()
+    while True:
+        # x1 = 2.0 * random.random() - 1.0
+        # x2 = 2.0 * random.random() - 1.0
+        while True:
+            r = random.random()
+            if r != 0.0:
+                break
+        
+        x1 = 2.0 * r - 1.0
+        while True:
+            r = random.random()
+            if r != 0.0:
+                break
+        x2 = 2.0 * r - 1.0
+        w = x1**2 + x2**2
+
+        if w < 1.0 and w != 0.0:
+            break
+    
+    return sigma * x2 * math.sqrt(-2.0 * math.log(w) / w)
+
+
+# def plot(x, y):
+#     fig, ax = plt.subplots()
+#     ax.scatter(x, y)
+#     ax.set_title('Gaussian noise of motion model')
+#     plt.show()
 
 
 # if __name__ == '__main__':

@@ -32,7 +32,7 @@ class Noisy_sensor():
 def add_error(scan_msg):
         noisy_scan = []
         error = 0.01
-        toggle_noise = 1.0
+        toggle_noise = 0.0
         
         # define the angle range: -30 degrees to +30 degrees
         angle_incre = scan_msg.angle_increment
