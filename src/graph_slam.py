@@ -273,10 +273,14 @@ def update_particle(particles_msg, curr_pose):
 
 
 
-def optimize_map_msg(icp_scan, curr_pose, non_op_map):
-    for i in range(len(icp_scan[0])):
-        icp_x = icp_scan[0][i]
-        icp_y = icp_scan[1][i]
+def update_map(icp_scan, curr_pose, non_op_map):
+    #print(len(icp_scan))
+    x = int(curr_pose[0,0] / map_resolution)
+    y = int(curr_pose[1,0] / map_resolution)
+
+    for i in range(len(icp_scan)):
+        icp_x = icp_scan[i][0]
+        icp_y = icp_scan[i][1]
         icp_index = get_index(icp_x, icp_y)
 
         non_op_map.data[int(icp_index)] = 100
@@ -337,7 +341,7 @@ if __name__== "__main__":
         curr_pose[0,0] = curr_pose[0,0] + dx
         curr_pose[1,0] = curr_pose[1,0] + dy
         curr_pose[2,0] = curr_pose[2,0] + dyaw
-        #print("curr_pose", curr_pose[0,0], curr_pose[1,0])
+        # #print("curr_pose", curr_pose[0,0], curr_pose[1,0])
 
         # curr_pose[0,0] = curr_pose[0,0] + curr_odom.pose.pose.position.x - prev_x
         # curr_pose[1,0] = curr_pose[1,0] + curr_odom.pose.pose.position.y - prev_y
@@ -353,7 +357,7 @@ if __name__== "__main__":
         scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
         #noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        non_op_map = deepcopy(map_msg)
+        #non_op_map = deepcopy(map_msg)
 
         #map_msg = build_map(noisy_scan_msg, curr_pose, map)
         dx_p = mark_point[0,0] - curr_pose[0,0]
@@ -363,7 +367,7 @@ if __name__== "__main__":
         # map_msg = build_map(scan_msg, curr_pose, copy(map_msg))
 
         r = math.sqrt(dx_p**2 + dy_p**2)
-        if r > 0.3 or dyaw_p > 0.3:
+        if r > 0.3 or abs(dyaw_p) > 0.5:
             particles = update_particle(copy(particles), curr_pose)
             mark_point = deepcopy(curr_pose)
 
@@ -372,27 +376,45 @@ if __name__== "__main__":
             graph.add_vertex(v2)
             graph.add_edges(edge)
 
-            map_msg = build_map(v2.scan_data, v2.pose, copy(non_op_map))
+
+
+            #map_msg = build_map(v2.scan_data, v2.pose, copy(map_msg))
+            #map_msg = update_map(v2.x_y_data, v2.pose, copy(non_op_map))
             
             A = np.array(v1.x_y_data) # destination
             B = np.array(v2.x_y_data) # source
             T, distances, i, is_converged = icp.icp(B, A, tolerance=0.0001)
-            if is_converged:
-                #print("T", T)
-                B_trans = np.ones((len(scan_msg.ranges), 3))
-                B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
-                B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
-                graph.update_scan_data(v2, B_trans)
+            B_trans = np.ones((len(scan_msg.ranges), 3))
+            B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+            B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
+            graph.update_scan_data(v2, B_trans)
+            B_trans = np.array(B_trans)
+            
+            assert np.all(np.array(v2.x_y_data) == np.array(B_trans))
+            print(np.all(np.array(v2.x_y_data) == np.array(B_trans)))
+            print(np.all(np.array(B) == np.array(B_trans)))
                 #    print("B", B)
                 # print("B_trans", B_trans)
-                map_msg = optimize_map_msg(B, curr_pose, copy(non_op_map))
-                plot(A, B, B_trans)
+            map_msg = update_map(A, curr_pose, deepcopy(map_msg))
+            #plot(A, B, B_trans)
+            #plot(A, B, B_trans)
             v1 = deepcopy(v2)
+            # if is_converged or True:
+            #     #print("T", T)
+            #     B_trans = np.ones((len(scan_msg.ranges), 3))
+            #     B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
+            #     B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
+            #     graph.update_scan_data(v2, B_trans)
+            #     #    print("B", B)
+            #     # print("B_trans", B_trans)
+            #     map_msg = update_map(B_trans, curr_pose, copy(non_op_map))
+            #     plot(A, B, B_trans)
+            # v1 = deepcopy(v2)
+            map_pub.publish(map_msg)
 
 
         
         path_msg = update_path_msg(copy(path), curr_pose)
-        map_pub.publish(map_msg)
         path_pub.publish(path_msg)
         particle_pub.publish(particles)
 

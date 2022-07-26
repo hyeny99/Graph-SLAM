@@ -38,9 +38,10 @@ class Graph():
 
 def x_y_data(pose, scan_msg):
     data = []
-    x = pose[0,0]
-    y = pose[1,0]
     yaw = pose[2,0]
+    resolution = 0.01
+    x = int(pose[0,0] / resolution)
+    y = int(pose[1,0] / resolution)
 
     ranges = scan_msg.ranges
     angle_min = scan_msg.angle_min
@@ -52,8 +53,8 @@ def x_y_data(pose, scan_msg):
         beam = ranges[i]
         if beam == float('inf'):
             beam = 0
-        beam_x = x + math.cos(t_yaw) * beam
-        beam_y = y + math.sin(t_yaw) * beam
+        beam_x = int(math.cos(t_yaw) * (beam / resolution)) + x
+        beam_y = int(math.sin(t_yaw) * (beam / resolution)) + y
         data.append([beam_x, beam_y])
 
         
