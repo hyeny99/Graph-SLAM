@@ -140,6 +140,17 @@ def plot(A, B, C):
     plt.legend()
     plt.show()
 
+def plot_poses(ground_pose, prev_pose, trans_pose=None):
+    plt.plot(ground_pose[0,0], ground_pose[1,0], 'o', mec = 'hotpink', mfc = 'hotpink', label='ground truth')
+    plt.plot(prev_pose[0,0], prev_pose[1,0], 'o', mec = '#4CAF50', mfc = '#4CAF50', label='uniform noise position')
+    #plt.plot(trans_pose[0], trans_pose[1], 'o', mec = 'r', mfc = 'r', label='gaussian noise position')
+    plt.xlabel("x(m)")
+    plt.ylabel("y(m)")
+    plt.legend()
+    plt.show()
+
+
+
 def create_data():
    
     th = np.pi / 8

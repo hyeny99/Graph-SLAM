@@ -184,7 +184,6 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
 
         # check error // converges
         if np.abs(prev_error - mean_error) < tolerance:
-            is_converged = True
             break
 
             
@@ -193,4 +192,4 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     # calculate final transformation
     T,_,_ = best_fit_transform(A, src[:m,:].T)
 
-    return T, distances, i, is_converged
+    return T, distances, i, np.abs(prev_error - mean_error)

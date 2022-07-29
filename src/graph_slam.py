@@ -2,6 +2,9 @@
 import os
 import sys
 import inspect
+from tkinter import X
+
+from sympy import Inverse
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir) 
@@ -20,7 +23,7 @@ from noisy_sensor import Noisy_sensor
 import noisy_odom
 #from scan_matching import *
 import icp
-from test_icp import plot
+from test_icp import plot, plot_poses
 
 # Config parameters
 dt = 0.01 # time between measurements
@@ -287,6 +290,28 @@ def update_map(icp_scan, curr_pose, non_op_map):
     
     return non_op_map
 
+def get_squared_error(odom_data, trans_data):
+    # odom_data and trans_data are x_y_data
+    assert np.shape(odom_data) == np.shape(trans_data)
+    index = len(odom_data) / 2
+    odom_beam = odom_data[index]
+    trans_beam = trans_data[index]
+
+    dx = trans_beam[0] - odom_beam[0]
+    dy = trans_beam[1] - odom_beam[1]
+
+    cov_matrix = np.matrix([[0.01**2, 0],
+                             [0, 0.01**2]])
+    info_matrix = np.linalg.inv(cov_matrix)
+
+    err_matrix = np.matrix([dx], [dy]) # 2 * 1
+    x = np.dot(err_matrix.T, info_matrix)
+    sq_err = np.dot(x, err_matrix)
+
+    return sq_err
+
+
+
 
 if __name__== "__main__":
     # Initialize ROS node
@@ -308,9 +333,10 @@ if __name__== "__main__":
     curr_pose[1, 0] = 15
     curr_pose[2, 0] = 0
 
+    ground_pose = deepcopy(curr_pose)
+
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-    #noisy_scan_msg = Noisy_sensor(scan_msg)
-    #scan_data = noisy_scan_msg.x_y_data(curr_pose)
+    noisy_scan_msg = Noisy_sensor(scan_msg)
     v1 = Vertex(curr_pose, scan_msg)
     graph.add_vertex(v1)
 
@@ -331,35 +357,44 @@ if __name__== "__main__":
     map_msg = build_map(v1.scan_data, curr_pose, map)
     map_pub.publish(map_msg)
 
+    #best_score = float('inf')
+
 
     while not rospy.is_shutdown():
         # Measurements (odom) : getting noisy dx, dy and dyaw
         curr_odom =  rospy.wait_for_message("/odom", Odometry, timeout=None)
-        dx, dy, dyaw = noisy_odom.get_noisy_odom(prev_pose, curr_odom)
+        #dx, dy, dyaw = noisy_odom.get_uniform_noisy_odom(prev_pose, curr_odom)
+        dx, dy, dyaw = noisy_odom.get_noisy_odom_2(prev_pose, curr_odom)
+
+        # ground_dx = curr_odom.pose.pose.position.x - prev_x
+        # ground_dy = curr_odom.pose.pose.position.y - prev_y
+        # ground_dyaw = get_rotation(curr_odom) - prev_yaw
    
         # update robot pose (belief)
         curr_pose[0,0] = curr_pose[0,0] + dx
         curr_pose[1,0] = curr_pose[1,0] + dy
         curr_pose[2,0] = curr_pose[2,0] + dyaw
-        # #print("curr_pose", curr_pose[0,0], curr_pose[1,0])
 
-        # curr_pose[0,0] = curr_pose[0,0] + curr_odom.pose.pose.position.x - prev_x
-        # curr_pose[1,0] = curr_pose[1,0] + curr_odom.pose.pose.position.y - prev_y
-        # curr_pose[2,0] = curr_pose[2,0] + get_rotation(curr_odom) - prev_yaw
+        ground_pose[0,0] = curr_odom.pose.pose.position.x + 17
+        ground_pose[1,0] = curr_odom.pose.pose.position.y + 15
+        ground_pose[2,0] = get_rotation(curr_odom)
 
-        prev_x = curr_odom.pose.pose.position.x
-        prev_y = curr_odom.pose.pose.position.y
-        prev_yaw = get_rotation(curr_odom)
+        # prev_x = curr_odom.pose.pose.position.x
+        # prev_y = curr_odom.pose.pose.position.y
+        # prev_yaw = get_rotation(curr_odom)
+        # prev_pose = [prev_x, prev_y, prev_yaw]
+        prev_x = curr_pose[0,0] - 17
+        prev_y = curr_pose[1,0] - 15
+        prev_yaw = curr_pose[2,0]
         prev_pose = [prev_x, prev_y, prev_yaw]
         
 
         # Measurements (laser)
         scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-        #noisy_scan_msg = Noisy_sensor(scan_msg)
+        noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        #non_op_map = deepcopy(map_msg)
+        non_op_map = deepcopy(map_msg)
 
-        #map_msg = build_map(noisy_scan_msg, curr_pose, map)
         dx_p = mark_point[0,0] - curr_pose[0,0]
         dy_p = mark_point[1,0] - curr_pose[1,0]
         dyaw_p = mark_point[2,0] - curr_pose[2,0]
@@ -372,45 +407,38 @@ if __name__== "__main__":
             mark_point = deepcopy(curr_pose)
 
             v2 = Vertex(curr_pose, scan_msg)
-            edge = Edge(v1, v2)
+            
             graph.add_vertex(v2)
-            graph.add_edges(edge)
 
+            # print("A", v1.x_y_data[:10])
+            # print("B", v2.x_y_data[:10])
 
-
-            #map_msg = build_map(v2.scan_data, v2.pose, copy(map_msg))
-            #map_msg = update_map(v2.x_y_data, v2.pose, copy(non_op_map))
+            map_msg = update_map(v2.x_y_data, v2.pose, deepcopy(non_op_map))
             
             A = np.array(v1.x_y_data) # destination
             B = np.array(v2.x_y_data) # source
-            T, distances, i, is_converged = icp.icp(B, A, tolerance=0.0001)
+            T, distances, i, tolerance = icp.icp(B, A, tolerance=0.0001)
             B_trans = np.ones((len(scan_msg.ranges), 3))
             B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
-            B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
-            graph.update_scan_data(v2, B_trans)
-            B_trans = np.array(B_trans)
+            B_trans = np.dot(T[0:2], B_trans.T).T.astype(int)  # change v2 scan data
+            sq_err = get_squared_error(odom_data=v2.x_y_data, trans_data=list(B_trans))
+            graph.update_scan_data(v2, list(B_trans))
+            #print("B_trans", B_trans[:10])
             
             assert np.all(np.array(v2.x_y_data) == np.array(B_trans))
-            print(np.all(np.array(v2.x_y_data) == np.array(B_trans)))
-            print(np.all(np.array(B) == np.array(B_trans)))
-                #    print("B", B)
-                # print("B_trans", B_trans)
-            map_msg = update_map(A, curr_pose, deepcopy(map_msg))
+            
+            map_msg = update_map(v2.x_y_data, curr_pose, deepcopy(non_op_map))
+
+            
+            edge = Edge(v1, v2)
+            graph.add_edges(edge)
             #plot(A, B, B_trans)
-            #plot(A, B, B_trans)
+
+        
             v1 = deepcopy(v2)
-            # if is_converged or True:
-            #     #print("T", T)
-            #     B_trans = np.ones((len(scan_msg.ranges), 3))
-            #     B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
-            #     B_trans= np.dot(T[0:2], B_trans.T).T  # change v2 scan data
-            #     graph.update_scan_data(v2, B_trans)
-            #     #    print("B", B)
-            #     # print("B_trans", B_trans)
-            #     map_msg = update_map(B_trans, curr_pose, copy(non_op_map))
-            #     plot(A, B, B_trans)
-            # v1 = deepcopy(v2)
             map_pub.publish(map_msg)
+
+            
 
 
         
