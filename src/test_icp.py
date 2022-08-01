@@ -1,5 +1,3 @@
-from cProfile import label
-from turtle import color
 import numpy as np
 import time
 import icp
@@ -96,7 +94,7 @@ def test_icp(A, B):
 
         # Run ICP
         start = time.time()
-        T, distances, iterations = icp.icp(B, A, tolerance=0.000001)
+        T, distances, iterations, tolerance  = icp.icp(B, A, tolerance=0.000000001)
         total_time += time.time() - start
 
         # Make C a homogeneous representation of B
@@ -111,6 +109,9 @@ def test_icp(A, B):
         # assert np.allclose(-T[0:3,3], t, atol=6*noise_sigma)        # T and t should be inverses
 
     #print('icp time: {:.3}'.format(total_time/num_tests))
+    print("tolerance", tolerance)
+    print("iteration", iterations)
+    print("mean distance", np.mean(distances))
     plot(A, B, C)
 
     return
@@ -170,14 +171,16 @@ def create_data():
     rot = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
     rand = np.random.rand(2, N)*rnd_scale
     data2 = np.dot(rot, data1) + move
-    data2 = np.add(data2, rand)
-    #data2[0:,0:6] = 1.0
-    data2[0,0] = 1.0
-    data2[0,1] = 1.0
-    data2[0,2] = 1.0
+    #data2 = np.add(data2, rand)
 
-    data2[0, 13] = 0.5
-    data2[0, 14] = 0.6
+
+    #data2[0:,0:6] = 1.0
+    # data2[0,0] = 1.0
+    # data2[0,1] = 1.0
+    # data2[0,2] = 1.0
+
+    # data2[0, 13] = 0.5
+    # data2[0, 14] = 0.6
    
     d2 = []
 

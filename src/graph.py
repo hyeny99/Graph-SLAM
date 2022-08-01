@@ -13,14 +13,16 @@ class Vertex():
         
 
 class Edge():
-    def __init__(self, v1, v2):
-        self.v1 = v1
-        self.v2 = v2
+    def __init__(self, vi:Vertex, vj:Vertex, uij):
+        self.vi = vi
+        self.vj = vj
+        self.uij = uij
+
 
 
 class Graph():
-    verticies = []
-    edges = []
+    verticies:Vertex = []
+    edges:Edge = []
     def __init__(self):
         pass
 
@@ -33,6 +35,13 @@ class Graph():
     def update_scan_data(self, vertex:Vertex, x_y_data):
         vertex.x_y_data = x_y_data
         return
+    
+    def get_index_vertex(self, vertex:Vertex):
+        for i in range(len(self.verticies)):
+            if vertex.pose == self.verticies[i].pose:
+                return i
+        
+        return None
 
 
 

@@ -94,6 +94,20 @@ def get_noisy_odom_2(prev_pose, curr_odom):
 
     return dx, dy, dyaw
 
+def get_simple_gaussian_noisy_odom(prev_pose, curr_odom):
+    dx = curr_odom.pose.pose.position.x - prev_pose[0]
+    dy = curr_odom.pose.pose.position.y - prev_pose[1]
+  
+    theta2 = get_rotation(curr_odom)
+    theta1 = prev_pose[2]
+    dyaw = theta2 - theta1
+
+    dis_x = dx + np.random.normal(0, error) * toggle_noise
+    dis_y = dy + np.random.normal(0, error) * toggle_noise
+    dis_yaw = dyaw + np.random.normal(0, error) * toggle_noise
+
+    return dis_x, dis_y, dis_yaw
+
 def sample_gaussian(sigma):
     x1 = x2 = w = r = 0.0
 

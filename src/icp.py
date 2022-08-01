@@ -4,7 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 from graph import Vertex
 import statistics
 
-outlier_rejection = True
+outlier_rejection = False
 
 
 def uniform_sampling(A, B):
@@ -140,6 +140,8 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         distances: Euclidean distances (errors) of the nearest neighbor
         i: number of iterations to converge
     '''
+    A = np.array(A)
+    B = np.array(B)
 
     assert A.shape == B.shape
     
@@ -184,6 +186,7 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
 
         # check error // converges
         if np.abs(prev_error - mean_error) < tolerance:
+            is_converged = True
             break
 
             
