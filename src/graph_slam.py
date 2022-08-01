@@ -131,7 +131,7 @@ def initialize_path_msg(curr_pose):
     pose.pose.position.z = 0
     
 
-    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2])
     pose.pose.orientation.x = quaternion[0]
     pose.pose.orientation.y = quaternion[1]
     pose.pose.orientation.z = quaternion[2]
@@ -150,7 +150,7 @@ def update_path_msg(path, curr_pose):
     pose.pose.position.z = 0
 
     
-    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2])
     pose.pose.orientation.x = quaternion[0]
     pose.pose.orientation.y = quaternion[1]
     pose.pose.orientation.z = quaternion[2]
@@ -247,7 +247,7 @@ def initialize_particle(curr_pose):
     pose.position.y = curr_pose[1]
     pose.position.z = 0
 
-    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2])
     pose.orientation.x = quaternion[0]
     pose.orientation.y = quaternion[1]
     pose.orientation.z = quaternion[2]
@@ -262,7 +262,7 @@ def update_particle(particles_msg, curr_pose):
     pose.position.y = curr_pose[1]
     pose.position.z = 0
 
-    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
+    quaternion = get_quaternion_from_euler(0, 0, curr_pose[2])
     pose.orientation.x = quaternion[0]
     pose.orientation.y = quaternion[1]
     pose.orientation.z = quaternion[2]
@@ -276,8 +276,8 @@ def update_particle(particles_msg, curr_pose):
 
 def update_map(icp_scan, curr_pose, map_msg):
     #print(len(icp_scan))
-    x = int(curr_pose[0,0] / map_resolution)
-    y = int(curr_pose[1,0] / map_resolution)
+    x = int(curr_pose[0] / map_resolution)
+    y = int(curr_pose[1] / map_resolution)
 
     for i in range(len(icp_scan)):
         icp_x = icp_scan[i][0]
