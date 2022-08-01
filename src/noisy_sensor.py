@@ -13,8 +13,8 @@ class Noisy_sensor():
 
    
     def __init__(self, scan_msg):
-        self.angle_min = angle_min_limit
-        self.angle_max = angle_max_limit
+        self.angle_min = scan_msg.angle_min
+        self.angle_max = scan_msg.angle_max
         self.angle_increment = scan_msg.angle_increment
         #print(self.angle_increment)
 
@@ -42,7 +42,8 @@ def add_error(scan_msg):
 
         for i in range(len(scan_msg.ranges)):
             # actual measurement
-            angle = scan_msg.angle_min + i * angle_incre 
+            angle = scan_msg.angle_min + i * angle_incre
+            angle = define_angle(angle) 
             if angle < angle_min_limit or angle > angle_max_limit:
                 continue
 
@@ -54,3 +55,7 @@ def add_error(scan_msg):
                 noisy_scan.append(noisy_r)
         
         return noisy_scan
+
+def define_angle(angle):
+    angle = math.degrees(angle) - 360.0
+    return math.radians(angle)

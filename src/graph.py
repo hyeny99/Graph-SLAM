@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 import math
 from copy import deepcopy
+import numpy as np
 
 class Vertex():
     verticies = []
@@ -36,9 +37,9 @@ class Graph():
         vertex.x_y_data = x_y_data
         return
     
-    def get_index_vertex(self, vertex:Vertex):
+    def get_index_vertex(self, vertex):
         for i in range(len(self.verticies)):
-            if vertex.pose == self.verticies[i].pose:
+            if np.all(vertex.pose == self.verticies[i].pose):
                 return i
         
         return None
@@ -46,11 +47,13 @@ class Graph():
 
 
 def x_y_data(pose, scan_msg):
+    if scan_msg == None:
+        return
     data = []
-    yaw = pose[2,0]
+    yaw = pose[2]
     resolution = 0.01
-    x = int(pose[0,0] / resolution)
-    y = int(pose[1,0] / resolution)
+    x = int(pose[0] / resolution)
+    y = int(pose[1] / resolution)
 
     ranges = scan_msg.ranges
     angle_min = scan_msg.angle_min

@@ -4,7 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 from graph import Vertex
 import statistics
 
-outlier_rejection = False
+outlier_rejection = True
 
 
 def uniform_sampling(A, B):
@@ -195,4 +195,4 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     # calculate final transformation
     T,_,_ = best_fit_transform(A, src[:m,:].T)
 
-    return T, distances, i, np.abs(prev_error - mean_error)
+    return T, distances, i, np.abs(prev_error - mean_error), is_converged

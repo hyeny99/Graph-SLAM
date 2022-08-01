@@ -2,7 +2,7 @@
 import numpy as np
 from numpy.linalg import inv
 import math
-from graph import Graph
+from graph import Graph, Vertex
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -43,7 +43,7 @@ def t2v(trans):
     v = np.zeros((3,1))
     v[:2,0] = trans[:2,2]
     v[2] = np.arctan2(trans[1,0], trans[0,0])
-    return v
+    return v.astype(np.float32)
 
 def v2t(v):
     # vector to transformation matrix
@@ -52,7 +52,7 @@ def v2t(v):
     trans = np.array([[cos, -sin, v[0]],
                       [sin,  cos, v[1]],
                       [0,    0,   1]])    
-    return trans
+    return trans.astype(np.float32)
 
 
 def calculate_err(xi, xj, uij):
@@ -98,22 +98,29 @@ def calculate_jacobian(vi, vj, uij):
 
     '''
 
-    sin_i = math.sin(vi[2])
-    cos_i = math.cos(vi[2])
+   
 
-    trans_i = v2t(vi)
-    trans_j = v2t(vj) 
-    trans_uij = v2t(uij)
-    rot_i =  trans_i[:2,:2]
-    rot_z = trans_uij[:2,:2]
+    si = np.sin(vi[2])
+    ci = np.cos(vi[2])
+    dr_i = np.array([[-si, ci], [-ci, -si]]).T
+    dt_ij = np.array([vj[:2] - vi[:2]]).T
+    print("dt_ij shape", np.shape(dt_ij))
 
-    drot_i = np.array([[-sin_i, cos_i],
-                      [-cos_i, -sin_i]]).T   # d rot_i / d theta_i
-    
-    A_ij = np.array([[-np.dot(rot_z.T, rot_i.T), np.dot(np.dot(rot_z.T, drot_i.T), (trans_j - trans_i))],
-                     [0, -1]])
-    B_ij = np.array([[np.dot(rot_z.T, rot_i.T), 0],
-                     [0, 1]])
+    t_i = v2t(vi)
+    t_j = v2t(vj)
+    t_u = v2t(uij)
+    r_i = t_i[:2,:2]
+    r_z = t_u[:2,:2]
+
+    A_ij = np.vstack((np.hstack((-r_z.T @ r_i.T, (r_z.T @ dr_i.T) @ dt_ij)), 
+                         [0, 0, -1]))
+    print(f'The shape of A_ij is {A_ij.shape}')
+
+    B_ij = np.vstack((np.hstack((r_z.T @ r_i.T, np.zeros((2,1)))),
+                         [0, 0, 1]))
+    print(f'The shape of B_ij is {B_ij.shape}')
+
+
     
 
     assert A_ij.shape == B_ij.shape
@@ -124,12 +131,12 @@ def calculate_jacobian(vi, vj, uij):
 
 
 
-def optimize_graph(tolerance=1e-5, iterations=100):
+def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
     sigma_x = 0.1
     sigma_y = 0.1
     sigma_theta = 0.05
 
-    omega = np.zeros(3, 3)
+    omega = np.zeros((3, 3))
     omega[0,0] = sigma_x
     omega[1,1] = sigma_y
     omega[2,2] = sigma_theta
@@ -137,15 +144,14 @@ def optimize_graph(tolerance=1e-5, iterations=100):
     # degree of freedom for 2D (x, y, theta)
     n = 3
 
-    edges = Graph.edges
-    vertices = Graph.verticies
+    edges = graph.edges
+    vertices = graph.verticies
     m = len(vertices)
     poses = []
     for vertex in vertices:
         poses.append(vertex.pose)
     
-    X = np.array(poses.T)
-    print(np.shape(X))
+    X = np.array(poses).T
 
 
     for _ in range(iterations):
@@ -156,8 +162,8 @@ def optimize_graph(tolerance=1e-5, iterations=100):
         b = np.zeros((m * n, 1))
 
         for edge in edges:
-            vi = edge.v1
-            vj = edge.v2
+            vi = edge.vi
+            vj = edge.vj
             uij = edge.uij
 
             xi = vi.pose
@@ -177,8 +183,8 @@ def optimize_graph(tolerance=1e-5, iterations=100):
             b_j = B_ij.T @ omega @ e_ij
 
             # get the index of the vertex
-            i = Graph.get_index_vertex(vi)
-            j = Graph.get_index_vertex(vj)
+            i = graph.get_index_vertex(vi)
+            j = graph.get_index_vertex(vj)
 
             index_i = i * 3
             index_j = j * 3
@@ -198,7 +204,11 @@ def optimize_graph(tolerance=1e-5, iterations=100):
         # fix the position of the first vertex (init pose)
         H[:n,:n] += np.eye(3)
 
-        dx = -np.dot(inv(H), b)
+        dx = -inv(H) @ b
+        print("dx shape", np.shape(dx))
+        print("dx", dx)
+
+
         X += dx
 
         if is_converged(edges, tolerance):
@@ -255,3 +265,4 @@ def plot_path(ground_pose, raw_pose, opt_pose):
 
     plt.legend()
     plt.show()
+

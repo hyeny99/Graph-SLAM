@@ -21,7 +21,7 @@ import noisy_odom
 import icp
 from test_icp import plot, plot_poses
 from loop_detection import Loop_closure
-from graph_optimization import optimize_graph, plot_path
+from graph_optimization import is_converged, optimize_graph, plot_path
 
 # Config parameters
 dt = 0.01 # time between measurements
@@ -126,8 +126,8 @@ def initialize_path_msg(curr_pose):
     path.header.frame_id = "odom"
     
     pose = PoseStamped()
-    pose.pose.position.x = curr_pose[0,0]
-    pose.pose.position.y = curr_pose[1,0]
+    pose.pose.position.x = curr_pose[0]
+    pose.pose.position.y = curr_pose[1]
     pose.pose.position.z = 0
     
 
@@ -145,8 +145,8 @@ def update_path_msg(path, curr_pose):
     pose = PoseStamped()
     #yaw = curr_pose[2,0]
     #r = math.sqrt(dx**2 + dy**2)
-    pose.pose.position.x = curr_pose[0,0]
-    pose.pose.position.y = curr_pose[1,0] 
+    pose.pose.position.x = curr_pose[0]
+    pose.pose.position.y = curr_pose[1] 
     pose.pose.position.z = 0
 
     
@@ -190,9 +190,9 @@ def build_map(scan_msg, pose, map):
     #range_min = scan_msg.range_min
     #range_max = scan_msg.range_max
 
-    theta = pose[2,0]
-    x_pos_t = int(pose[0,0] / map_resolution)
-    y_pos_t = int(pose[1,0] / map_resolution)
+    theta = pose[2]
+    x_pos_t = int(pose[0] / map_resolution)
+    y_pos_t = int(pose[1] / map_resolution)
 
     for i in range((len(ranges))):
         angle = angle_min + i * angle_incre
@@ -243,8 +243,8 @@ def initialize_particle(curr_pose):
     particles_msg.header.stamp = rospy.Time.now()
 
     pose = Pose()
-    pose.position.x = curr_pose[0,0]
-    pose.position.y = curr_pose[1,0]
+    pose.position.x = curr_pose[0]
+    pose.position.y = curr_pose[1]
     pose.position.z = 0
 
     quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
@@ -258,8 +258,8 @@ def initialize_particle(curr_pose):
 
 def update_particle(particles_msg, curr_pose):
     pose = Pose()
-    pose.position.x = curr_pose[0,0]
-    pose.position.y = curr_pose[1,0]
+    pose.position.x = curr_pose[0]
+    pose.position.y = curr_pose[1]
     pose.position.z = 0
 
     quaternion = get_quaternion_from_euler(0, 0, curr_pose[2,0])
@@ -311,13 +311,12 @@ if __name__== "__main__":
     prev_yaw = get_rotation(previous_position)
     prev_pose = [prev_x, prev_y, prev_yaw]
 
-    curr_pose = np.empty((3, 1))
-    curr_pose[0, 0] = 15
-    curr_pose[1, 0] = 15
-    curr_pose[2, 0] = 0
+    # initial pose
+    curr_pose = np.array([15, 15, 0]).astype(np.float32)
 
-    ground_pose.append([curr_pose[0, 0], curr_pose[1, 0], curr_pose[2, 0]])
-    raw_pose.append([curr_pose[0, 0], curr_pose[1, 0], curr_pose[2, 0]])
+
+    ground_pose.append([curr_pose[0], curr_pose[1], curr_pose[2]])
+    raw_pose.append([curr_pose[0], curr_pose[1], curr_pose[2]])
 
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
     noisy_scan_msg = Noisy_sensor(scan_msg)
@@ -327,11 +326,8 @@ if __name__== "__main__":
 
     loop_closure = Loop_closure(v_init.x_y_data)
 
+    mark_point = np.array([curr_pose[0], curr_pose[1], curr_pose[2]])
 
-    mark_point = np.empty((3,1))
-    mark_point[0,0] = curr_pose[0,0]
-    mark_point[1,0] = curr_pose[1,0]
-    mark_point[2,0] = curr_pose[2,0]
 
     path = initialize_path_msg(curr_pose)
     map = initialize_map_msg()
@@ -345,23 +341,24 @@ if __name__== "__main__":
     map_pub.publish(map_msg)
 
 
+
     while not rospy.is_shutdown():
         # Measurements (odom) : getting noisy dx, dy and dyaw
         curr_odom =  rospy.wait_for_message("/odom", Odometry, timeout=None)
         dx, dy, dyaw = noisy_odom.get_simple_gaussian_noisy_odom(prev_pose, curr_odom)
 
         # update robot pose (belief)
-        curr_pose[0,0] = curr_pose[0,0] + dx
-        curr_pose[1,0] = curr_pose[1,0] + dy
-        curr_pose[2,0] = curr_pose[2,0] + dyaw
+        curr_pose[0] = curr_pose[0] + dx
+        curr_pose[1] = curr_pose[1] + dy
+        curr_pose[2] = curr_pose[2] + dyaw
 
         # prev_x = curr_odom.pose.pose.position.x
         # prev_y = curr_odom.pose.pose.position.y
         # prev_yaw = get_rotation(curr_odom)
         # prev_pose = [prev_x, prev_y, prev_yaw]
-        prev_x = curr_pose[0,0] - 17
-        prev_y = curr_pose[1,0] - 15
-        prev_yaw = curr_pose[2,0]
+        prev_x = curr_pose[0] - 17
+        prev_y = curr_pose[1] - 15
+        prev_yaw = curr_pose[2]
         prev_pose = [prev_x, prev_y, prev_yaw]
         
 
@@ -369,19 +366,19 @@ if __name__== "__main__":
         scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
         noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        dx_p = mark_point[0,0] - curr_pose[0,0]
-        dy_p = mark_point[1,0] - curr_pose[1,0]
-        dyaw_p = mark_point[2,0] - curr_pose[2,0]
+        dx_p = mark_point[0] - curr_pose[0]
+        dy_p = mark_point[1] - curr_pose[1]
+        dyaw_p = mark_point[2] - curr_pose[2]
 
 
         r = math.sqrt(dx_p**2 + dy_p**2)
-        if r > 0.3 or abs(dyaw_p) > 0.5:
+        if r > 0.2 or abs(dyaw_p) > 0.4:
             ground_x = curr_odom.pose.pose.position.x + 17
             ground_y = curr_odom.pose.pose.position.y + 15
             ground_yaw = get_rotation(curr_odom)
             ground_pose.append([ground_x, ground_y, ground_yaw])
 
-            raw_pose.append([curr_pose[0, 0], curr_pose[1, 0], curr_pose[2, 0]])
+            raw_pose.append([curr_pose[0], curr_pose[1], curr_pose[2]])
 
 
             particles = update_particle(copy(particles), curr_pose)
@@ -390,10 +387,7 @@ if __name__== "__main__":
             vj = Vertex(curr_pose, scan_msg)
             graph.add_vertex(vj)
 
-            uij = np.empty((3,1))
-            uij[0,0] = dx_p
-            uij[1,0] = dy_p
-            uij[2,0] = dyaw_p
+            uij = np.array([dx_p, dy_p, dyaw_p])
 
             edge = Edge(vi, vj, uij)
             graph.add_vertex(vj)
@@ -404,12 +398,15 @@ if __name__== "__main__":
             
             A = np.array(vi.x_y_data) # destination
             B = np.array(vj.x_y_data) # source
-            T, distances, i, tolerance = icp.icp(B, A, tolerance=0.0001)
+            T, distances, i, tolerance, _ = icp.icp(B, A, tolerance=0.0001)
             B_trans = np.ones((len(scan_msg.ranges), 3))
             B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
             B_trans = np.dot(T[0:2], B_trans.T).T.astype(int)  # change v2 scan data
             graph.update_scan_data(vj, list(B_trans))
             #print("B_trans", B_trans[:10])
+            print("iterations", i)
+            print("tolerance", tolerance)
+            print("mean distances", np.mean(distances))
             
             assert np.all(np.array(vj.x_y_data) == np.array(B_trans))
             
@@ -421,10 +418,7 @@ if __name__== "__main__":
             map_pub.publish(map_msg)
 
             if loop_closure.detect_loop(vj.x_y_data):
-                uij = np.empty((3,1))
-                uij[0,0] = 0
-                uij[1,0] = 0
-                uij[2,0] = math.radians(0)
+                uij = np.array(0, 0, math.radians(0)).astype(np.float32)
                 edge = Edge(v_init, vj, uij)
                 graph.add_edges(edge)
                 X = optimize_graph()
@@ -432,9 +426,7 @@ if __name__== "__main__":
             
                 break
 
-            
-
-
+        
         
         path_msg = update_path_msg(copy(path), curr_pose)
         path_pub.publish(path_msg)

@@ -1,5 +1,6 @@
 import numpy as np
 import time
+from graph_optimization import is_converged
 import icp
 import matplotlib.pyplot as plt
 
@@ -94,7 +95,7 @@ def test_icp(A, B):
 
         # Run ICP
         start = time.time()
-        T, distances, iterations, tolerance  = icp.icp(B, A, tolerance=0.000000001)
+        T, distances, iterations, tolerance, is_converged  = icp.icp(B, A, tolerance=0.000000001)
         total_time += time.time() - start
 
         # Make C a homogeneous representation of B
