@@ -37,12 +37,16 @@ class Graph():
         vertex.x_y_data = x_y_data
         return
     
+    def update_vertex_pose(self, vertex:Vertex, pose):
+        vertex.pose = pose
+    
     def get_index_vertex(self, vertex):
         for i in range(len(self.verticies)):
             if np.all(vertex.pose == self.verticies[i].pose):
                 return i
         
         return None
+    
 
 
 

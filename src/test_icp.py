@@ -157,7 +157,7 @@ def create_data():
    
     th = np.pi / 8
     move = np.array([[0.30], [0.5]])
-    rnd_scale = 0.03
+    rnd_scale = 0.05
     x1 = np.linspace(0, 1.1, N)
     y1 = np.sin(x1 * np.pi)
     data1 = np.array([x1, y1])
@@ -170,15 +170,16 @@ def create_data():
 
 
     rot = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
-    rand = np.random.rand(2, N)*rnd_scale
+    rand = np.random.rand(2, 40)*rnd_scale
     data2 = np.dot(rot, data1) + move
-    #data2 = np.add(data2, rand)
+    data2[:,:40] += rand
+    # = np.add(data2, rand)
 
 
-    #data2[0:,0:6] = 1.0
-    # data2[0,0] = 1.0
-    # data2[0,1] = 1.0
-    # data2[0,2] = 1.0
+    # #data2[0:,0:6] = 1.0
+    # data2[0,0] = 0.2
+    # data2[0,1] = 0.3
+    # data2[0,2] = 0.3
 
     # data2[0, 13] = 0.5
     # data2[0, 14] = 0.6

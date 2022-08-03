@@ -4,7 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 from graph import Vertex
 import statistics
 
-outlier_rejection = True
+outlier_rejection = False
 
 
 def uniform_sampling(A, B):

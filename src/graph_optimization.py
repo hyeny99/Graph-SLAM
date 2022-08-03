@@ -1,10 +1,13 @@
 #! /usr/bin/env python3
+import enum
 import numpy as np
 from numpy.linalg import inv
 import math
 from graph import Graph, Vertex
 import matplotlib
 import matplotlib.pyplot as plt
+import scipy.sparse.linalg
+import scipy.sparse
 
 '''
 reference:
@@ -114,18 +117,18 @@ def calculate_jacobian(vi, vj, uij):
 
     A_ij = np.vstack((np.hstack((-r_z.T @ r_i.T, (r_z.T @ dr_i.T) @ dt_ij)), 
                          [0, 0, -1]))
-    print(f'The shape of A_ij is {A_ij.shape}')
+    #print(f'The shape of A_ij is {A_ij.shape}')
 
     B_ij = np.vstack((np.hstack((r_z.T @ r_i.T, np.zeros((2,1)))),
                          [0, 0, 1]))
-    print(f'The shape of B_ij is {B_ij.shape}')
+    #print(f'The shape of B_ij is {B_ij.shape}')
 
 
     
 
     assert A_ij.shape == B_ij.shape
     
-    print("A_ij shape", A_ij.shape)
+    #print("A_ij shape", A_ij.shape)
 
     return A_ij, B_ij
 
@@ -151,15 +154,19 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
     for vertex in vertices:
         poses.append(vertex.pose)
     
+    poses = np.array(poses).astype(np.float)
+    
     X = np.array(poses).T
 
 
     for _ in range(iterations):
         # define 
-        H = np.zeros((m * n, n * m))
+        H = scipy.sparse.csc_matrix((m * n, n * m))
+        #np.zeros((m * n, n * m))
 
         # define a coefficient vector
-        b = np.zeros((m * n, 1))
+        b = scipy.sparse.csc_matrix((m * n, 1))
+        #np.zeros((m * n, 1))
 
         for edge in edges:
             vi = edge.vi
@@ -204,16 +211,45 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
         # fix the position of the first vertex (init pose)
         H[:n,:n] += np.eye(3)
 
-        dx = -inv(H) @ b
-        print("dx shape", np.shape(dx))
-        print("dx", dx)
+        X_update = scipy.sparse.linalg.spsolve(H, b)
+        X_update[np.isnan(X_update)] = 0
+        X_update = np.reshape(X_update, (m, n)).astype(np.float)
+        #print("X_update", X_update)
+
+        for count, value in enumerate(X_update):
+            print("count", count)
+            print("pose", poses[count])
+            print("value", value)
+            
+            poses[count] += value
+            graph.update_vertex_pose(vertices[count], poses[count])
+    
+            print("updated pose", poses[count])
 
 
-        X += dx
+
+        # dx = -inv(H) @ b
+        # print("dx shape", np.shape(dx))
+        # print("dx", dx)
+        # j = 0
+
+        # for i in range(len(X.T)):
+        #     print(X.T[i,:])
+        #     print("X.T shape", np.shape(X.T[i,:3]))
+        #     print("dx shape", np.shape(dx[i:i+3,:]))
+        #     #X.T[i] = np.add(X.T[i], dx[i:i+3])
+        #     #X.T[i,:3] += dx[i:i+3]
+        #     X.T[i, 0] = dx[j]
+        #     X.T[i, 1] = dx[j+1]
+        #     X.T[i, 2] = dx[j+2]
+        #     j += 3
 
         if is_converged(edges, tolerance):
             break
-    return X
+
+        print("poses", poses)
+
+    return poses
 
 
 
@@ -237,8 +273,8 @@ def is_converged(edges, tolerance=1e-5):
 
 
 
-def plot_path(ground_pose, raw_pose, opt_pose):
-    assert np.shape(ground_pose) == np.shape(raw_pose) == np.shape(opt_pose)
+def plot_path(ground_pose, raw_pose, X):
+    assert np.shape(ground_pose) == np.shape(raw_pose) == np.shape(X.T)
 
     ground_x = []
     ground_y = []
@@ -246,22 +282,22 @@ def plot_path(ground_pose, raw_pose, opt_pose):
     raw_x = []
     raw_y = []
 
-    X_x = []
-    X_y = []
+    # X_x = []
+    # X_y = []
 
-    for i in len(ground_pose):
+    for i in range(len(ground_pose)):
         ground_x.append(ground_pose[i][0])
         ground_y.append(ground_pose[i][1])
 
         raw_x.append(raw_pose[i][0])
         raw_y.append(raw_pose[i][1])
 
-        X_x.append(opt_pose[i][0])
-        X_y.append(opt_pose[i][1])
+        # X_x.append(opt_pose[i][0])
+        # X_y.append(opt_pose[i][1])
 
-    plt.plot(ground_x, ground_y, label="ground truth path")
-    plt.plot(raw_x, raw_y, label="path with odometry error")
-    plt.plot(X_x, X_y, label="optimized path")
+    plt.plot(ground_x, ground_y, 'o', label="ground truth path")
+    plt.plot(raw_x, raw_y, 'o', label="path with odometry error")
+    plt.plot(X[0], X[1], 'o', label="optimized path")
 
     plt.legend()
     plt.show()

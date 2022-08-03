@@ -22,6 +22,8 @@ import icp
 from test_icp import plot, plot_poses
 from loop_detection import Loop_closure
 from graph_optimization import is_converged, optimize_graph, plot_path
+import itertools as it
+
 
 # Config parameters
 dt = 0.01 # time between measurements
@@ -194,8 +196,10 @@ def build_map(scan_msg, pose, map):
     x_pos_t = int(pose[0] / map_resolution)
     y_pos_t = int(pose[1] / map_resolution)
 
+    angles = list(it.chain(range(0, 31), range(330, 360)))
+
     for i in range((len(ranges))):
-        angle = angle_min + i * angle_incre
+        #angle = angle_min + i * angle_incre
         #print(math.degrees(angle))
 
         # z = ranges[i]
@@ -224,8 +228,8 @@ def build_map(scan_msg, pose, map):
         z = ranges[i]
         if z == float('inf'):
             continue
-        z_x = int(math.cos(angle + theta) * (z / map_resolution))
-        z_y = int(math.sin(angle + theta) * (z / map_resolution))
+        z_x = int(math.cos(math.radians(angles[i]) + theta) * (z / map_resolution))
+        z_y = int(math.sin(math.radians(angles[i]) + theta) * (z / map_resolution))
 
         z_x_t = z_x + x_pos_t
         z_y_t = z_y + y_pos_t
@@ -320,7 +324,7 @@ if __name__== "__main__":
 
     scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
     noisy_scan_msg = Noisy_sensor(scan_msg)
-    v_init = Vertex(curr_pose, scan_msg)
+    v_init = Vertex(curr_pose, noisy_scan_msg)
     vi = deepcopy(v_init)
     graph.add_vertex(vi)
 
@@ -384,7 +388,7 @@ if __name__== "__main__":
             particles = update_particle(copy(particles), curr_pose)
             mark_point = deepcopy(curr_pose)
 
-            vj = Vertex(curr_pose, scan_msg)
+            vj = Vertex(curr_pose, noisy_scan_msg)
             graph.add_vertex(vj)
 
             uij = np.array([dx_p, dy_p, dyaw_p])
@@ -399,7 +403,7 @@ if __name__== "__main__":
             A = np.array(vi.x_y_data) # destination
             B = np.array(vj.x_y_data) # source
             T, distances, i, tolerance, _ = icp.icp(B, A, tolerance=0.0001)
-            B_trans = np.ones((len(scan_msg.ranges), 3))
+            B_trans = np.ones((len(noisy_scan_msg.ranges), 3))
             B_trans[:,0:2] = np.copy(B) # [[x,y], [x,y],...]
             B_trans = np.dot(T[0:2], B_trans.T).T.astype(int)  # change v2 scan data
             graph.update_scan_data(vj, list(B_trans))

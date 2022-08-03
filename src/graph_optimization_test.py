@@ -21,10 +21,14 @@ def test():
     edge = Edge(vi, vj, uij)
     graph.add_edges(edge)
 
-    X = optimize_graph(graph)
-    print("X", X)
+    X = optimize_graph(graph) # 2 x 3
+    #print("X", X)
 
-    #plot_path()
+    ground = np.array([pose_i, uij]) # 2 x 3
+    raw = np.array([pose_i, pose_j]) # 2 x 3
+
+
+    plot_path(ground, raw, X.T)
 
 
 if __name__ == "__main__":
