@@ -80,6 +80,9 @@ def calculate_err(xi, xj, uij):
     #err_trans = np.dot(inv(trans_uij), np.dot(inv(trans_i), trans_j))
     err_trans = inv(trans_uij) @ (inv(trans_i) @ trans_j)
 
+    #print("inverse", (inv(trans_i) @ trans_j))
+    #print("measurement", trans_uij)
+
     # convert error matrix to a vector
     err = t2v(err_trans) # 3 * 1
     return err
@@ -107,7 +110,6 @@ def calculate_jacobian(vi, vj, uij):
     ci = np.cos(vi[2])
     dr_i = np.array([[-si, ci], [-ci, -si]]).T
     dt_ij = np.array([vj[:2] - vi[:2]]).T
-    print("dt_ij shape", np.shape(dt_ij))
 
     t_i = v2t(vi)
     t_j = v2t(vj)
@@ -117,12 +119,8 @@ def calculate_jacobian(vi, vj, uij):
 
     A_ij = np.vstack((np.hstack((-r_z.T @ r_i.T, (r_z.T @ dr_i.T) @ dt_ij)), 
                          [0, 0, -1]))
-    #print(f'The shape of A_ij is {A_ij.shape}')
-
     B_ij = np.vstack((np.hstack((r_z.T @ r_i.T, np.zeros((2,1)))),
                          [0, 0, 1]))
-    #print(f'The shape of B_ij is {B_ij.shape}')
-
 
     
 
@@ -135,38 +133,44 @@ def calculate_jacobian(vi, vj, uij):
 
 
 def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
-    sigma_x = 0.1
-    sigma_y = 0.1
-    sigma_theta = 0.05
+    #cov = 0.01
+
+    sigma_x = 0.01
+    sigma_y = 0.01
+    sigma_theta = 0.5
 
     omega = np.zeros((3, 3))
     omega[0,0] = sigma_x
     omega[1,1] = sigma_y
     omega[2,2] = sigma_theta
 
+    omega = inv(omega)
+
+
     # degree of freedom for 2D (x, y, theta)
     n = 3
 
-    edges = graph.edges
-    vertices = graph.verticies
-    m = len(vertices)
-    poses = []
-    for vertex in vertices:
-        poses.append(vertex.pose)
-    
-    poses = np.array(poses).astype(np.float)
-    
-    X = np.array(poses).T
 
 
     for _ in range(iterations):
+
+        edges = graph.edges
+        vertices = graph.verticies
+        m = len(vertices)
+        poses = []
+        for vertex in vertices:
+            poses.append(vertex.pose)
+    
+        poses = np.array(poses).astype(np.float)
+    
+        X = np.array(poses).T
         # define 
-        H = scipy.sparse.csc_matrix((m * n, n * m))
-        #np.zeros((m * n, n * m))
+        #H = scipy.sparse.csc_matrix((m * n, n * m))
+        H = np.zeros((m * n, n * m)).astype(np.float)
 
         # define a coefficient vector
-        b = scipy.sparse.csc_matrix((m * n, 1))
-        #np.zeros((m * n, 1))
+        #b = scipy.sparse.csc_matrix((m * n, 1))
+        b = np.zeros((m * n, 1)).astype(np.float)
 
         for edge in edges:
             vi = edge.vi
@@ -176,7 +180,12 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
             xi = vi.pose
             xj = vj.pose
 
-            e_ij = calculate_err(xi, xj, uij)
+            e_ij = calculate_err(xi, xj, uij)  
+            print("err", e_ij)
+
+
+
+
             A_ij, B_ij = calculate_jacobian(xi, xj, uij)
 
             # compute the contribution of this constraint to the linear system
@@ -193,8 +202,14 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
             i = graph.get_index_vertex(vi)
             j = graph.get_index_vertex(vj)
 
-            index_i = i * 3
-            index_j = j * 3
+            # print("index i", i)
+            # print("index j", j)
+
+            # def id2index(id):
+            #     return slice((n*id), (n*(id+1)))
+
+            index_i = i * n
+            index_j = j * n
 
 
             # update the linear system
@@ -207,30 +222,58 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
             b[index_i:index_i+n] += b_i
             b[index_j:index_j+n] += b_j
 
+            # H[id2index(i_id), id2index(i_id)] += H_ii
+            # H[id2index(i_id), id2index(j_id)] += H_ij
+            # H[id2index(j_id), id2index(i_id)] += H_ij.T
+            # H[id2index(j_id), id2index(j_id)] += H_jj
+            # b[id2index(i_id)] += b_i
+            # b[id2index(j_id)] += b_j
+
+
         
         # fix the position of the first vertex (init pose)
-        H[:n,:n] += np.eye(3)
+        H[:n,:n] += np.eye(n)
+        
+        # X_update = scipy.sparse.linalg.spsolve(H, b)
+        # X_update[np.isnan(X_update)] = 0
+        # X_update = -np.reshape(X_update, (m, n)).astype(np.float)
+        # print("X_update", X_update)
 
-        X_update = scipy.sparse.linalg.spsolve(H, b)
-        X_update[np.isnan(X_update)] = 0
+        assert (H == H.T).all()  # H is a symmetric matrix
+
+        #L = np.tril(H)
+        #U = np.triu(H)
+        #assert (L == U.T).all()
+
+        L = np.linalg.cholesky(H)
+        # H = L @ L.T.conj()
+
+        #X_update = -inv(H) @ b
+        X_update = -(inv(L.T) @ inv(L)) @ b
         X_update = np.reshape(X_update, (m, n)).astype(np.float)
-        #print("X_update", X_update)
+
+        #print("dx shape", np.shape(X_update))
+        # print("dx", dx)
+    
 
         for count, value in enumerate(X_update):
-            print("count", count)
-            print("pose", poses[count])
-            print("value", value)
-            
+            print("update value", value)
             poses[count] += value
             graph.update_vertex_pose(vertices[count], poses[count])
+
+        
+        # for i in range(0, len(edges)-1):
+        #     edges[i].uij = poses[i+1] - poses[i]
+        
+        # print("edgse", edges[0].uij)
+        # print("last", edges[m-1].uij)
+
+                
     
-            print("updated pose", poses[count])
+        #print("updated pose vi", edges[0].vi.pose)
 
 
 
-        # dx = -inv(H) @ b
-        # print("dx shape", np.shape(dx))
-        # print("dx", dx)
         # j = 0
 
         # for i in range(len(X.T)):
@@ -247,7 +290,7 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
         if is_converged(edges, tolerance):
             break
 
-        print("poses", poses)
+        #print("poses", poses)
 
     return poses
 
@@ -295,9 +338,10 @@ def plot_path(ground_pose, raw_pose, X):
         # X_x.append(opt_pose[i][0])
         # X_y.append(opt_pose[i][1])
 
-    plt.plot(ground_x, ground_y, 'o', label="ground truth path")
-    plt.plot(raw_x, raw_y, 'o', label="path with odometry error")
-    plt.plot(X[0], X[1], 'o', label="optimized path")
+    plt.scatter(ground_x, ground_y, color='g', alpha=0.3, label="ground truth path")
+    plt.scatter(raw_x, raw_y, color='r', alpha=0.3, label="path with odometry error")
+    plt.scatter(X[0], X[1], color='k', alpha=0.3, label="optimized path")
+
 
     plt.legend()
     plt.show()

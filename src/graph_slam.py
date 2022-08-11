@@ -391,7 +391,7 @@ if __name__== "__main__":
             vj = Vertex(curr_pose, noisy_scan_msg)
             graph.add_vertex(vj)
 
-            uij = np.array([dx_p, dy_p, dyaw_p])
+            uij = np.array([dx_p, dy_p, dyaw_p]) # estimated pose difference between t-1 and t by odom
 
             edge = Edge(vi, vj, uij)
             graph.add_vertex(vj)

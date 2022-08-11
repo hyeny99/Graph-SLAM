@@ -18,6 +18,8 @@ class Edge():
         self.vi = vi
         self.vj = vj
         self.uij = uij
+    # def update_uij(self, uij):
+    #     self.uij = uij
 
 
 
