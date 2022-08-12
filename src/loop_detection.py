@@ -8,8 +8,8 @@ class Loop_closure():
 
     
     def detect_loop(self, second):
-        _, distances, i, tolerance, is_converged = icp.icp(second, self.first, tolerance=1e-14)
-        if is_converged and np.mean(distances) < 3.0:
+        _, distances, i, tolerance, is_converged = icp.icp(second, self.first, tolerance=5e-14)
+        if is_converged and np.mean(distances) < 2.5:
             print("loop closure iterations", i)
             print("loop closure tolerance", tolerance)
             print("loop closure mean distances", np.mean(distances))

@@ -2,6 +2,8 @@
 import math
 from copy import deepcopy
 import numpy as np
+import itertools as it
+
 
 class Vertex():
     verticies = []
@@ -40,6 +42,8 @@ class Graph():
         return
     
     def update_vertex_pose(self, vertex:Vertex, pose):
+        #i = self.get_index_vertex(vertex)
+        #self.verticies[i].pose = pose
         vertex.pose = pose
     
     def get_index_vertex(self, vertex):
@@ -65,8 +69,12 @@ def x_y_data(pose, scan_msg):
     angle_min = scan_msg.angle_min
     angle_incre = scan_msg.angle_increment
 
+    # angles = list(it.chain(range(0, 31), range(330, 360)))
+
+
     for i in range(len(ranges)):
         angle = angle_min + angle_incre * i
+        # angle = math.radians(angles[i])
         t_yaw = yaw + angle
         beam = ranges[i]
         if beam == float('inf'):

@@ -2,6 +2,7 @@
 import os
 import sys
 import inspect
+from turtle import update
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir) 
@@ -196,10 +197,10 @@ def build_map(scan_msg, pose, map):
     x_pos_t = int(pose[0] / map_resolution)
     y_pos_t = int(pose[1] / map_resolution)
 
-    angles = list(it.chain(range(0, 31), range(330, 360)))
+    # angles = list(it.chain(range(0, 31), range(330, 360)))
 
     for i in range((len(ranges))):
-        #angle = angle_min + i * angle_incre
+        angle = angle_min + i * angle_incre
         #print(math.degrees(angle))
 
         # z = ranges[i]
@@ -228,8 +229,10 @@ def build_map(scan_msg, pose, map):
         z = ranges[i]
         if z == float('inf'):
             continue
-        z_x = int(math.cos(math.radians(angles[i]) + theta) * (z / map_resolution))
-        z_y = int(math.sin(math.radians(angles[i]) + theta) * (z / map_resolution))
+        # z_x = int(math.cos(math.radians(angles[i]) + theta) * (z / map_resolution))
+        # z_y = int(math.sin(math.radians(angles[i]) + theta) * (z / map_resolution))
+        z_x = int(math.cos(angle + theta) * (z / map_resolution))
+        z_y = int(math.sin(angle + theta) * (z / map_resolution))
 
         z_x_t = z_x + x_pos_t
         z_y_t = z_y + y_pos_t
@@ -322,8 +325,8 @@ if __name__== "__main__":
     ground_pose.append([curr_pose[0], curr_pose[1], curr_pose[2]])
     raw_pose.append([curr_pose[0], curr_pose[1], curr_pose[2]])
 
-    scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-    noisy_scan_msg = Noisy_sensor(scan_msg)
+    noisy_scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
+    #noisy_scan_msg = Noisy_sensor(scan_msg)
     v_init = Vertex(curr_pose, noisy_scan_msg)
     vi = deepcopy(v_init)
     graph.add_vertex(vi)
@@ -367,8 +370,8 @@ if __name__== "__main__":
         
 
         # Measurements (laser)
-        scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
-        noisy_scan_msg = Noisy_sensor(scan_msg)
+        noisy_scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
+        #noisy_scan_msg = Noisy_sensor(scan_msg)
 
         dx_p = mark_point[0] - curr_pose[0]
         dy_p = mark_point[1] - curr_pose[1]
@@ -388,17 +391,39 @@ if __name__== "__main__":
             particles = update_particle(copy(particles), curr_pose)
             mark_point = deepcopy(curr_pose)
 
-            vj = Vertex(curr_pose, noisy_scan_msg)
-            graph.add_vertex(vj)
+            vi = graph.verticies[len(graph.verticies) - 1]
 
+            # if len(graph.verticies) > 1:
+            #     graph.update_vertex_pose(graph.verticies[1], np.array([3,0,0]))
+
+            # for count, edge in enumerate(graph.edges):
+            #     print("edge", count, "vi", edge.vi.pose)
+            #     print("edge", count, "vj", edge.vj.pose)
+
+
+            vj = deepcopy(Vertex(curr_pose, noisy_scan_msg))
             uij = np.array([dx_p, dy_p, dyaw_p]) # estimated pose difference between t-1 and t by odom
 
             edge = Edge(vi, vj, uij)
             graph.add_vertex(vj)
             graph.add_edges(edge)
 
+            edges = graph.edges
+            test_i = edges[len(edges) - 1].vi
+            test_j = edges[len(edges) - 1].vj
+
+            # print("vi reference", test_i)
+            # print("vj_reference", test_j)
+            # print("vi pose", test_i.pose)
+            # print("vj pose", test_j.pose)
+            # print("vi index", graph.get_index_vertex(test_i))
+            # print("vj index", graph.get_index_vertex(test_j))   
+
+
             # print("A", v1.x_y_data[:10])
             # print("B", v2.x_y_data[:10])
+            #map_msg = build_map(noisy_scan_msg, curr_pose, deepcopy(map_msg))
+            #map_msg = update_map(vj.x_y_data, vj.pose, deepcopy(map_msg))
             
             A = np.array(vi.x_y_data) # destination
             B = np.array(vj.x_y_data) # source
@@ -408,24 +433,24 @@ if __name__== "__main__":
             B_trans = np.dot(T[0:2], B_trans.T).T.astype(int)  # change v2 scan data
             graph.update_scan_data(vj, list(B_trans))
             #print("B_trans", B_trans[:10])
-            print("iterations", i)
-            print("tolerance", tolerance)
-            print("mean distances", np.mean(distances))
+            # print("iterations", i)
+            # print("tolerance", tolerance)
+            # print("mean distances", np.mean(distances))
             
             assert np.all(np.array(vj.x_y_data) == np.array(B_trans))
             
-            map_msg = update_map(vj.x_y_data, curr_pose, deepcopy(map_msg))
+            map_msg = update_map(vj.x_y_data, vj.pose, deepcopy(map_msg))
       
             #plot(A, B, B_trans)
         
-            vi = deepcopy(vj)
+            vi = copy(vj)
             map_pub.publish(map_msg)
 
             if loop_closure.detect_loop(vj.x_y_data):
-                uij = np.array(0, 0, math.radians(0)).astype(np.float32)
-                edge = Edge(v_init, vj, uij)
+                uij = np.array([0, 0, math.radians(0)]).astype(np.float32)
+                edge = Edge(graph.verticies[0], vj, uij)
                 graph.add_edges(edge)
-                X = optimize_graph()
+                X = optimize_graph(graph)
                 plot_path(ground_pose, raw_pose, X)
             
                 break

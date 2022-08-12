@@ -61,17 +61,32 @@ def test():
     # err = calculate_err(vi.pose, vj.pose, uij)
     # print("err", err)
 
+    print("v1 before:", v1.pose)
+    print("graph v1 before", graph.verticies[1].pose)
+    print("edge v1 before", graph.edges[1].vi.pose)
     
 
     X = optimize_graph(graph) # 2 x 3
-    print("ground", ground)
-    print("odom", noisy)
-    print("X", X)
+    # print("ground", ground)
+    # print("odom", noisy)
+    # print("X", X)
     #print("v1 pose", )
 
 
 
-    plot_path(ground, noisy, X.T)
+    graph.update_vertex_pose(v1, np.array([3, 0, 0]))
+    print("v1 after:", v1.pose)
+    print("graph v1 after", graph.verticies[1].pose)
+    print("edge v1 after", graph.edges[1].vi.pose, graph.edges[0].vj.pose)
+    i = graph.get_index_vertex(v1)
+    print("index", i)
+    
+
+
+
+
+
+    # plot_path(ground, noisy, X.T)
 
 
 if __name__ == "__main__":

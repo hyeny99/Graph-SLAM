@@ -181,7 +181,7 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
             xj = vj.pose
 
             e_ij = calculate_err(xi, xj, uij)  
-            print("err", e_ij)
+            #print("err", e_ij)
 
 
 
@@ -239,7 +239,7 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
         # X_update = -np.reshape(X_update, (m, n)).astype(np.float)
         # print("X_update", X_update)
 
-        assert (H == H.T).all()  # H is a symmetric matrix
+        #assert (H == H.T).all()  # H is a symmetric matrix
 
         #L = np.tril(H)
         #U = np.triu(H)
@@ -257,9 +257,11 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=100):
     
 
         for count, value in enumerate(X_update):
-            print("update value", value)
+            # print("update value", value)
             poses[count] += value
             graph.update_vertex_pose(vertices[count], poses[count])
+
+        
 
         
         # for i in range(0, len(edges)-1):
@@ -325,8 +327,6 @@ def plot_path(ground_pose, raw_pose, X):
     raw_x = []
     raw_y = []
 
-    # X_x = []
-    # X_y = []
 
     for i in range(len(ground_pose)):
         ground_x.append(ground_pose[i][0])
@@ -335,8 +335,6 @@ def plot_path(ground_pose, raw_pose, X):
         raw_x.append(raw_pose[i][0])
         raw_y.append(raw_pose[i][1])
 
-        # X_x.append(opt_pose[i][0])
-        # X_y.append(opt_pose[i][1])
 
     plt.scatter(ground_x, ground_y, color='g', alpha=0.3, label="ground truth path")
     plt.scatter(raw_x, raw_y, color='r', alpha=0.3, label="path with odometry error")
