@@ -331,7 +331,7 @@ if __name__== "__main__":
     vi = deepcopy(v_init)
     graph.add_vertex(vi)
 
-    loop_closure = Loop_closure(v_init.x_y_data)
+    loop_closure = Loop_closure(v_init.x_y_data)  # an initial node for loop detection created
 
     mark_point = np.array([curr_pose[0], curr_pose[1], curr_pose[2]])
 
@@ -373,9 +373,9 @@ if __name__== "__main__":
         noisy_scan_msg =  rospy.wait_for_message("/scan", LaserScan, timeout=None)
         #noisy_scan_msg = Noisy_sensor(scan_msg)
 
-        dx_p = mark_point[0] - curr_pose[0]
-        dy_p = mark_point[1] - curr_pose[1]
-        dyaw_p = mark_point[2] - curr_pose[2]
+        dx_p = curr_pose[0] - mark_point[0]
+        dy_p = curr_pose[1] - mark_point[1]
+        dyaw_p = curr_pose[2] - mark_point[2]
 
 
         r = math.sqrt(dx_p**2 + dy_p**2)
@@ -392,32 +392,16 @@ if __name__== "__main__":
             mark_point = deepcopy(curr_pose)
 
             vi = graph.verticies[len(graph.verticies) - 1]
-
-            # if len(graph.verticies) > 1:
-            #     graph.update_vertex_pose(graph.verticies[1], np.array([3,0,0]))
-
-            # for count, edge in enumerate(graph.edges):
-            #     print("edge", count, "vi", edge.vi.pose)
-            #     print("edge", count, "vj", edge.vj.pose)
-
-
             vj = deepcopy(Vertex(curr_pose, noisy_scan_msg))
-            uij = np.array([dx_p, dy_p, dyaw_p]) # estimated pose difference between t-1 and t by odom
+            uij = np.array([dx_p, dy_p, dyaw_p]).astype(np.float) # estimated pose difference between t-1 and t by odom
+
+            assert (vj.pose[0] - vi.pose[0]) == dx_p
 
             edge = Edge(vi, vj, uij)
             graph.add_vertex(vj)
             graph.add_edges(edge)
+            #print("uij", graph.edges[len(graph.edges) - 1].uij)
 
-            edges = graph.edges
-            test_i = edges[len(edges) - 1].vi
-            test_j = edges[len(edges) - 1].vj
-
-            # print("vi reference", test_i)
-            # print("vj_reference", test_j)
-            # print("vi pose", test_i.pose)
-            # print("vj pose", test_j.pose)
-            # print("vi index", graph.get_index_vertex(test_i))
-            # print("vj index", graph.get_index_vertex(test_j))   
 
 
             # print("A", v1.x_y_data[:10])
@@ -433,25 +417,28 @@ if __name__== "__main__":
             B_trans = np.dot(T[0:2], B_trans.T).T.astype(int)  # change v2 scan data
             graph.update_scan_data(vj, list(B_trans))
             #print("B_trans", B_trans[:10])
-            # print("iterations", i)
-            # print("tolerance", tolerance)
-            # print("mean distances", np.mean(distances))
+            print("iterations", i)
+            print("tolerance", tolerance)
+            print("mean distances", np.mean(distances))
             
             assert np.all(np.array(vj.x_y_data) == np.array(B_trans))
             
             map_msg = update_map(vj.x_y_data, vj.pose, deepcopy(map_msg))
       
             #plot(A, B, B_trans)
-        
-            vi = copy(vj)
             map_pub.publish(map_msg)
 
             if loop_closure.detect_loop(vj.x_y_data):
-                uij = np.array([0, 0, math.radians(0)]).astype(np.float32)
+                uij = np.array([0, 0, 0]).astype(np.float)
+                print("initial pose", graph.verticies[0].pose)
                 edge = Edge(graph.verticies[0], vj, uij)
                 graph.add_edges(edge)
                 X = optimize_graph(graph)
+                ground_pose = np.array(ground_pose).astype(np.float)
+                raw_pose = np.array(raw_pose).astype(np.float)
                 plot_path(ground_pose, raw_pose, X)
+
+                
             
                 break
 
