@@ -4,7 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 from graph import Vertex
 import statistics
 
-outlier_rejection = False
+outlier_rejection = True
 
 
 def uniform_sampling(A, B):
@@ -51,7 +51,7 @@ def best_fit_transform(A, B):
 
     # rotation matrix
     H = np.dot(AA.T, BB)
-    U, S, Vt = np.linalg.svd(H)
+    U, D, Vt = np.linalg.svd(H)
     R = np.dot(Vt.T, U.T)
 
     # special reflection case
@@ -86,6 +86,7 @@ def nearest_neighbor(src, dst):
     neigh = NearestNeighbors(n_neighbors=1)
     neigh.fit(dst)
     distances, indices = neigh.kneighbors(src, return_distance=True)
+    # indices = [src, dst]
 
     return distances.ravel(), indices.ravel()
 
@@ -163,7 +164,7 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
     if init_pose is not None:
         src = np.dot(init_pose, src)
 
-    prev_error = 0
+    prev_error = float('inf')
 
     for i in range(max_iterations):
         # find the nearest neighbors between the current source and destination points (m = num of dimensions)
@@ -183,6 +184,10 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         
         # update the current source
         src = np.dot(T, src)
+
+        # if the error does not decrease, break
+        if prev_error < mean_error:
+            break
 
         # check error // converges
         if np.abs(prev_error - mean_error) < tolerance:

@@ -1,3 +1,4 @@
+from cProfile import label
 import numpy as np
 import time
 from graph_optimization import is_converged
@@ -65,6 +66,37 @@ def test_best_fit():
 
     return
 
+def test_nearest_neigh(A, B):
+    # A = src, B = dst
+    distances, indices = icp.nearest_neighbor(B, A)  # index = [dst]
+    print(indices)
+    indices = np.transpose(indices)
+    # A shape = (240, 2)
+    print(np.shape(indices))
+    plt.scatter(A[:, 0], A[:, 1], s=4, label="source")
+    plt.scatter(B[:, 0], B[:, 1], s=4, label="destination")
+    #plt.scatter(B[indices[:10], 0], B[indices[:10], 1], s=4, label="destination")
+
+    for i in range(240):
+        plt.plot((A[i, 0],B[indices[i], 0]), (A[i, 1],B[indices[i], 1]), color='g')
+    
+    # plt.plot((A[4, 0],B[indices[4], 0]), (A[4, 1],B[indices[4], 1]), color='g')
+    # plt.plot((A[60, 0],B[indices[60], 0]), (A[60, 1],B[indices[60], 1]), color='g')
+    # plt.plot((A[140, 0],B[indices[140], 0]), (A[140, 1],B[indices[140], 1]), color='g')
+    # plt.plot((A[196, 0],B[indices[196], 0]), (A[196, 1],B[indices[196], 1]), color='g')
+
+    plt.title("Nearest Neighbours pairs")
+    plt.xlabel("x (m)")
+    plt.ylabel("y (m)")
+
+
+
+    #plt.plot((1, 2), (1, 2))
+
+    plt.legend()
+    plt.show()
+
+
 
 def test_icp(A, B):
 
@@ -95,6 +127,7 @@ def test_icp(A, B):
 
         # Run ICP
         start = time.time()
+        
         T, distances, iterations, tolerance, is_converged  = icp.icp(B, A, tolerance=0.000000001)
         total_time += time.time() - start
 
@@ -157,7 +190,7 @@ def create_data():
    
     th = np.pi / 8
     move = np.array([[0.30], [0.5]])
-    rnd_scale = 0.05
+    rnd_scale = 0.03
     x1 = np.linspace(0, 1.1, N)
     y1 = np.sin(x1 * np.pi)
     data1 = np.array([x1, y1])
@@ -170,10 +203,10 @@ def create_data():
 
 
     rot = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
-    rand = np.random.rand(2, 40)*rnd_scale
+    rand = np.random.rand(2, 240)*rnd_scale
     data2 = np.dot(rot, data1) + move
-    data2[:,:40] += rand
-    # = np.add(data2, rand)
+    #data2[:,:40] += rand
+    data2[:,:] = np.add(data2, rand)
 
 
     # #data2[0:,0:6] = 1.0
@@ -221,4 +254,5 @@ if __name__ == "__main__":
     # plt.legend()
     # plt.show()
     #test_best_fit()
-    test_icp(d1, d2) # d1 = dst, d2 = src
+    #test_icp(d1, d2) # d1 = dst, d2 = src
+    test_nearest_neigh(d1, d2)

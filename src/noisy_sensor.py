@@ -40,7 +40,7 @@ def add_error(scan_msg):
         
         # define the angle range: -30 degrees to +30 degrees
         angle_incre = scan_msg.angle_increment
-
+        #print("len of ranges", len(scan_msg.ranges))
 
         for i in it.chain(range(0, 31), range(330, 360)):
             # actual measurement
