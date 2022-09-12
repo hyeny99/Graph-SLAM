@@ -1,6 +1,12 @@
 #! /usr/bin/env python3
+import os
+import sys
+curr_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, curr_dir) 
+
 import icp
 import numpy as np
+
 
 class Loop_closure():
     def __init__(self, first):

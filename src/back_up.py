@@ -2,7 +2,6 @@
 import os
 import sys
 import inspect
-from turtle import update
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir) 
@@ -16,13 +15,13 @@ from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import random
 from copy import copy, deepcopy
-from graph import Vertex, Edge, Graph
-from noisy_sensor import Noisy_sensor
-import noisy_odom
-import icp
-from test_icp import plot, plot_poses
-from loop_detection import Loop_closure
-from graph_optimization import is_converged, optimize_graph, plot_path
+from scripts.front_end.graph import Vertex, Edge, Graph
+from scripts.sensor.noisy_sensor import Noisy_sensor
+import scripts.sensor.noisy_odom as noisy_odom
+import scripts.scan_matching.icp as icp
+from test.icp_test import plot, plot_poses
+from scripts.scan_matching.loop_detection import Loop_closure
+from scripts.back_end.graph_optimization import is_converged, optimize_graph, plot_path
 import itertools as it
 
 

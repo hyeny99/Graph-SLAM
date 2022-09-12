@@ -9,7 +9,7 @@
 
 #from sklearn.neighbors import NearestNeighbors, KNearest
 import numpy as np
-from graph import Vertex, Edge, Graph
+from scripts.front_end.graph import Vertex, Edge, Graph
 import sys
 import cv2
 

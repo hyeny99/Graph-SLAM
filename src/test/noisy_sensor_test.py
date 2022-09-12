@@ -20,7 +20,7 @@ import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
-import noisy_sensor
+import scripts.sensor.noisy_sensor as noisy_sensor
 
 dt = 0.1
 

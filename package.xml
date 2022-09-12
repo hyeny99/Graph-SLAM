@@ -2,7 +2,7 @@
 <package format="2">
   <name>Graph-SLAM</name>
   <version>0.0.0</version>
-  <description>The bachelor_thesis package</description>
+  <description>The bachelor thesis package for graph-based SLAM</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

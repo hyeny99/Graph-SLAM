@@ -1,16 +1,13 @@
 #! /usr/bin/env python3
-import enum
-from turtle import color
+import sys
+sys.path.append("..")
+
 import numpy as np
 from numpy.linalg import inv
 import math
-from graph import Graph, Vertex
+from front_end.graph import Graph, Vertex
 import matplotlib
 import matplotlib.pyplot as plt
-import scipy.sparse.linalg
-import scipy.sparse
-from scipy.linalg import cholesky
-#from scipy.sparse.cholmod import cholesky
 
 '''
 reference:
@@ -132,11 +129,7 @@ def calculate_jacobian(vi, vj, uij):
 
 
 
-<<<<<<< HEAD
 def optimize_graph(graph:Graph, tolerance=1e-5, iterations=2):
-=======
-def optimize_graph(graph:Graph, tolerance=1e-5, iterations=10):
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
     #cov = 0.01
 
     sigma_x = 0.01
@@ -168,19 +161,10 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=10):
         print("X shape", X.shape)
 
         # define 
-<<<<<<< HEAD
         H = np.zeros((m * n, n * m)).astype(np.float)
 
         # define a coefficient vector
         b = np.zeros((m * n, 1)).astype(np.float)
-=======
-        H = scipy.sparse.csc_matrix((m * n, n * m))
-        #H = np.zeros((m * n, n * m)).astype(np.float)
-
-        # define a coefficient vector
-        b = scipy.sparse.csc_matrix((m * n, 1))
-        #b = np.zeros((m * n, 1)).astype(np.float)
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
         for count, edge in enumerate(edges):
             vi = edge.vi
@@ -211,86 +195,41 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=10):
             b_j = B_ij.T @ omega @ e_ij
 
             # get the index of the vertex
-            i_id = graph.get_index_vertex(vi)
-            j_id = graph.get_index_vertex(vj)
+            i = graph.get_index_vertex(vi)
+            j = graph.get_index_vertex(vj)
 
             # print("index i", i)
             # print("index j", j)
 
-<<<<<<< HEAD
-=======
-            def id2index(id):
-                return slice((n*id), (n*(id+1)))
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
-            # index_i = i * n
-            # index_j = j * n
+            index_i = i * n
+            index_j = j * n
 
-<<<<<<< HEAD
             # update the linear system
             H[index_i:index_i+n, index_i:index_i+n] += H_ii
             H[index_i:index_i+n, index_j:index_j+n] += H_ij
             H[index_j:index_j+n, index_i:index_i+n] += H_ji
             H[index_j:index_j+n, index_j:index_j+n] += H_jj
-=======
 
-            # # update the linear system
-            # H[index_i:index_i+n, index_i:index_i+n] += H_ii
-            # H[index_i:index_i+n, index_j:index_j+n] += H_ij
-            # H[index_j:index_j+n, index_i:index_i+n] += H_ji
-            # H[index_j:index_j+n, index_j:index_j+n] += H_jj
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
+            # update the coefficient vector
+            b[index_i:index_i+n] += b_i
+            b[index_j:index_j+n] += b_j
 
-            # # update the coefficient vector
-            # b[index_i:index_i+n] += b_i
-            # b[index_j:index_j+n] += b_j
-
-<<<<<<< HEAD
-=======
-            H[id2index(i_id), id2index(i_id)] += H_ii
-            H[id2index(i_id), id2index(j_id)] += H_ij
-            H[id2index(j_id), id2index(i_id)] += H_ij.T
-            H[id2index(j_id), id2index(j_id)] += H_jj
-            b[id2index(i_id)] += b_i
-            b[id2index(j_id)] += b_j
-
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
         
         # fix the position of the first vertex (init pose)
         H[:n,:n] += np.eye(n)
         
-<<<<<<< HEAD
         L = np.linalg.cholesky(H)
 
         X_update = -(inv(L.T) @ inv(L)) @ b
         X_update = np.reshape(X_update, (m, n)).astype(np.float)
-=======
-        X_update = -scipy.sparse.linalg.spsolve(H, b)
-        X_update[np.isnan(X_update)] = 0
-        X_update = np.reshape(X_update, (m, n)).astype(np.float)
-        # print("X_update", X_update)
-
-        #assert (H == H.T).all()  # H is a symmetric matrix
-
-        #L = np.tril(H)
-        #U = np.triu(H)
-        #assert (L == U.T).all()
-
-        #L = np.linalg.cholesky(H)
-        # H = L @ L.T.conj()
-
-        # X_update = -inv(H) @ b
-        # #X_update = -(inv(L.T) @ inv(L)) @ b
-        # X_update = np.reshape(X_update, (m, n)).astype(np.float)
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
         print("dx shape", np.shape(X_update))
         # print("dx", dx)
     
 
         for count, value in enumerate(X_update):
-<<<<<<< HEAD
             #print("update value", value)
             print("value shape", value.shape)
             poses[count] += value
@@ -298,50 +237,14 @@ def optimize_graph(graph:Graph, tolerance=1e-5, iterations=10):
             graph.update_vertex_pose(vertices[count], poses[count])
 
         
-=======
-            print("update value", value)
-            poses[count] += (value * 0.01) 
-            graph.update_vertex_pose(vertices[count], poses[count])
-
-        
-
-        
-        # for i in range(0, len(edges)-1):
-        #     edges[i].uij = poses[i+1] - poses[i]
-        
-        # print("edgse", edges[0].uij)
-        # print("last", edges[m-1].uij)
-
-                
-    
-        #print("updated pose vi", edges[0].vi.pose)
-
-
-
-        # j = 0
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
         converged, mean_err = is_converged(edges, tolerance)
         mean_errors.append(mean_err)
 
         if converged:
             break
-<<<<<<< HEAD
     
     return np.array(poses).astype(np.float), np.array(mean_errors).astype(np.float)
-=======
-
-        #print("poses", poses)
-
-    # print("poses shape", np.shape(poses))
-
-    # poses = []
-    # for vertex in graph.verticies:
-    #     poses.append(vertex.pose)
-
-    
-    return np.array(poses).astype(np.float)
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
 
 
@@ -371,32 +274,10 @@ def plot_path(ground_pose, raw_pose, X):
     print("raw pose", raw_pose)
     
     # assert np.shape(ground_pose) == np.shape(raw_pose) == np.shape(X)
-<<<<<<< HEAD
 
     ground_pose_T = ground_pose.T
     raw_pose_T = raw_pose.T
     X_T = X.T
-=======
-
-    ground_pose_T = ground_pose.T
-    raw_pose_T = raw_pose.T
-    X_T = X.T
-
-    # ground_x = []
-    # ground_y = []
-
-    # raw_x = []
-    # raw_y = []
-
-
-    # for i in range(len(ground_pose)):
-    #     ground_x.append(ground_pose[i][0])
-    #     ground_y.append(ground_pose[i][1])
-
-    #     raw_x.append(raw_pose[i][0])
-    #     raw_y.append(raw_pose[i][1])
-
->>>>>>> 4ceedfc58d2dbd0451104456167d35ddd8dc3f4a
 
     plt.scatter(ground_pose_T[0], ground_pose_T[1], color='g', alpha=0.3, label="ground truth path")
     plt.scatter(raw_pose_T[0], raw_pose_T[1], color='r', alpha=0.3, label="path with odometry error")

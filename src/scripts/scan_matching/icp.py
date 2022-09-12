@@ -1,7 +1,5 @@
-from copy import deepcopy
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
-from graph import Vertex
 import statistics
 
 outlier_rejection = True
@@ -170,6 +168,9 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         # find the nearest neighbors between the current source and destination points (m = num of dimensions)
         distances, indices = nearest_neighbor(src[:m,:].T, dst[:m,:].T)
         mean_error = np.mean(distances)
+
+        if prev_error < mean_error:
+            break
 
         if outlier_rejection:
             passed_pairs = check_outlier(np.copy(distances), mean_error, indices) # [src, dst]

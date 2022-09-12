@@ -1,8 +1,8 @@
 from cProfile import label
 import numpy as np
 import time
-from graph_optimization import is_converged
-import icp
+from scripts.back_end.graph_optimization import is_converged
+import scripts.scan_matching.icp as icp
 import matplotlib.pyplot as plt
 
 # Constants
